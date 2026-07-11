@@ -7,7 +7,11 @@ from app.models.match import Match
 from app.models.player import Player
 from app.models.prediction import Prediction
 from app.models.score import Score
+from app.models.simulation_match_result import SimulationMatchResult
+from app.models.simulation_run import SimulationRun
 from app.models.team import Team
+from app.models.training_prediction import TrainingPrediction
+from app.models.training_session import TrainingSession
 from app.models.user import User
 
 __all__ = [
@@ -22,6 +26,10 @@ __all__ = [
     "Player",
     "Prediction",
     "Score",
+    "SimulationMatchResult",
+    "SimulationRun",
     "Team",
+    "TrainingPrediction",
+    "TrainingSession",
     "User",
 ]

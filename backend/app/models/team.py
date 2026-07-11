@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.historical_match import HistoricalMatch
     from app.models.match import Match
     from app.models.player import Player
+    from app.models.simulation_match_result import SimulationMatchResult
 
 
 class Team(Base):
@@ -31,4 +32,10 @@ class Team(Base):
     )
     away_historical_matches: Mapped[list["HistoricalMatch"]] = relationship(
         foreign_keys="HistoricalMatch.away_team_id", back_populates="away_team"
+    )
+    home_simulation_match_results: Mapped[list["SimulationMatchResult"]] = relationship(
+        foreign_keys="SimulationMatchResult.home_team_id", back_populates="home_team"
+    )
+    away_simulation_match_results: Mapped[list["SimulationMatchResult"]] = relationship(
+        foreign_keys="SimulationMatchResult.away_team_id", back_populates="away_team"
     )

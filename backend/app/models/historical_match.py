@@ -11,6 +11,7 @@ from app.models.enums import MatchPhase
 
 if TYPE_CHECKING:
     from app.models.team import Team
+    from app.models.training_prediction import TrainingPrediction
 
 
 class HistoricalMatch(Base):
@@ -36,3 +37,4 @@ class HistoricalMatch(Base):
     away_team: Mapped["Team"] = relationship(
         foreign_keys=[away_team_id], back_populates="away_historical_matches"
     )
+    training_predictions: Mapped[list["TrainingPrediction"]] = relationship(back_populates="historical_match")

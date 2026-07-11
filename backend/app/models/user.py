@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from app.models.award_prediction import AwardPrediction
     from app.models.prediction import Prediction
     from app.models.score import Score
+    from app.models.simulation_run import SimulationRun
+    from app.models.training_session import TrainingSession
 
 
 class User(Base):
@@ -26,3 +28,5 @@ class User(Base):
     predictions: Mapped[list["Prediction"]] = relationship(back_populates="user")
     award_predictions: Mapped[list["AwardPrediction"]] = relationship(back_populates="user")
     score: Mapped[Optional["Score"]] = relationship(back_populates="user")
+    training_sessions: Mapped[list["TrainingSession"]] = relationship(back_populates="user")
+    simulation_runs: Mapped[list["SimulationRun"]] = relationship(back_populates="created_by")
