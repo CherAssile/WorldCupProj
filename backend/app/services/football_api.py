@@ -36,6 +36,10 @@ class Match:
     `home_team`/`away_team` valent None tant que l'équipe n'est pas encore connue (ex. la
     finale, avant la fin des demies) : `home_placeholder`/`away_placeholder` portent alors
     la référence brute de la source (ex. "W101" = vainqueur du match 101).
+
+    `home_score`/`away_score` sont le score du temps réglementaire (seul utilisé pour le
+    scoring des pronostics). `extra_time_*`/`penalties_*` ne servent qu'à déterminer
+    `winner_team`, l'équipe qualifiée tous prolongements confondus.
     """
 
     round_label: str
@@ -47,6 +51,11 @@ class Match:
     away_placeholder: str | None
     home_score: int | None
     away_score: int | None
+    extra_time_home_score: int | None
+    extra_time_away_score: int | None
+    penalties_home_score: int | None
+    penalties_away_score: int | None
+    winner_team: str | None
 
 
 @dataclass(frozen=True)
@@ -71,12 +80,40 @@ def _parse_kickoff_at(date: str, time_str: str) -> datetime:
     return naive.replace(tzinfo=tz)
 
 
+def _resolve_winner(
+    home_team: str | None,
+    away_team: str | None,
+    full_time: list[int] | None,
+    extra_time: list[int] | None,
+    penalties: list[int] | None,
+) -> str | None:
+    """Équipe qualifiée tous prolongements confondus : tirs au but > prolongation > temps
+    réglementaire. None si les deux équipes ne sont pas encore connues, ou si le match
+    (de groupe) se termine sur un nul sans qu'aucun des trois scores ne le départage."""
+    if home_team is None or away_team is None:
+        return None
+    for score in (penalties, extra_time, full_time):
+        if score is None:
+            continue
+        home_goals, away_goals = score
+        if home_goals > away_goals:
+            return home_team
+        if away_goals > home_goals:
+            return away_team
+    return None
+
+
 def _parse_match(raw: dict) -> Match:
-    # Le pronostic porte sur le temps réglementaire (règle du projet) : seul "ft" (full time)
-    # est utilisé, jamais "et" (prolongation) ni "p" (tirs au but).
+    # Le pronostic porte sur le temps réglementaire (règle du projet) : "ft" (full time)
+    # alimente seul home_score/away_score. "et"/"p" ne servent qu'à déterminer le vainqueur.
     score = raw.get("score") or {}
     full_time = score.get("ft")
+    extra_time = score.get("et")
+    penalties = score.get("p")
+
     home_score, away_score = (full_time[0], full_time[1]) if full_time else (None, None)
+    extra_time_home_score, extra_time_away_score = (extra_time[0], extra_time[1]) if extra_time else (None, None)
+    penalties_home_score, penalties_away_score = (penalties[0], penalties[1]) if penalties else (None, None)
 
     team1, team2 = raw["team1"], raw["team2"]
     home_team = None if _is_placeholder_team(team1) else team1
@@ -92,6 +129,11 @@ def _parse_match(raw: dict) -> Match:
         away_placeholder=team2 if away_team is None else None,
         home_score=home_score,
         away_score=away_score,
+        extra_time_home_score=extra_time_home_score,
+        extra_time_away_score=extra_time_away_score,
+        penalties_home_score=penalties_home_score,
+        penalties_away_score=penalties_away_score,
+        winner_team=_resolve_winner(home_team, away_team, full_time, extra_time, penalties),
     )
 
 

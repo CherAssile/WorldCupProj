@@ -28,6 +28,9 @@ class Team(Base):
     away_matches: Mapped[list["Match"]] = relationship(
         foreign_keys="Match.away_team_id", back_populates="away_team"
     )
+    won_matches: Mapped[list["Match"]] = relationship(
+        foreign_keys="Match.winner_team_id", back_populates="winner_team"
+    )
     home_historical_matches: Mapped[list["HistoricalMatch"]] = relationship(
         foreign_keys="HistoricalMatch.home_team_id", back_populates="home_team"
     )

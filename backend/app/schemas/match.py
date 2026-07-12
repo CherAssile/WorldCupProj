@@ -20,6 +20,11 @@ class MatchRead(BaseModel):
     away_placeholder: str | None
     home_score: int | None
     away_score: int | None
+    extra_time_home_score: int | None
+    extra_time_away_score: int | None
+    penalties_home_score: int | None
+    penalties_away_score: int | None
+    winner_team: TeamRead | None
 
 
 class MatchPhaseGroup(BaseModel):

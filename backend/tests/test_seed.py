@@ -76,6 +76,23 @@ def test_full_seed_produces_104_matches_with_two_unresolved(
     assert all(m.home_placeholder and m.away_placeholder for m in unresolved)
 
 
+def test_penalty_shootout_winner_is_correctly_resolved(db_session: Session, unreachable_network: None) -> None:
+    """Coupe du Monde 2026, match 74 (Allemagne-Paraguay) : nul 1-1 aux 90 minutes et en
+    prolongation, qualification du Paraguay aux tirs au but (3-4).
+
+    home_score/away_score doivent rester le score du temps réglementaire (1-1) : seul lui
+    sert au scoring des pronostics, quelle que soit l'issue finale du match.
+    """
+    client = FootballApiClient(source_url="https://example.invalid/worldcup.json", fallback_path=DEFAULT_FALLBACK_PATH)
+    seed_service.run_seed(db_session, client=client)
+
+    match = db_session.query(Match).filter(Match.num == 74).one()
+    assert (match.home_score, match.away_score) == (1, 1)
+    assert (match.extra_time_home_score, match.extra_time_away_score) == (1, 1)
+    assert (match.penalties_home_score, match.penalties_away_score) == (3, 4)
+    assert match.winner_team.name == "Paraguay"
+
+
 def test_seed_is_idempotent(db_session: Session, local_fixture_client: FootballApiClient) -> None:
     """Deux exécutions successives sur la même source ne créent aucun doublon.
 

@@ -169,6 +169,11 @@ def _upsert_matches(db: Session, api_matches: list[ApiMatch], team_ids: dict[str
             "num": api_match.num,
             "home_score": api_match.home_score,
             "away_score": api_match.away_score,
+            "extra_time_home_score": api_match.extra_time_home_score,
+            "extra_time_away_score": api_match.extra_time_away_score,
+            "penalties_home_score": api_match.penalties_home_score,
+            "penalties_away_score": api_match.penalties_away_score,
+            "winner_team_id": _resolve_team_id(team_ids, api_match.winner_team),
         }
 
         if match is None:

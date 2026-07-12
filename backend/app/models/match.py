@@ -37,10 +37,22 @@ class Match(Base):
         SqlEnum(MatchStatus, name="match_status"), default=MatchStatus.SCHEDULED, nullable=False
     )
     kickoff_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Score du temps réglementaire (90 min + arrêts) : seul celui-ci sert au scoring des
+    # pronostics (règle du projet), quelle que soit l'issue finale du match.
     home_score: Mapped[int | None] = mapped_column(nullable=True)
     away_score: Mapped[int | None] = mapped_column(nullable=True)
+    # Décision finale d'un match à élimination directe, si le temps réglementaire ne suffit
+    # pas. Ne servent jamais au scoring des pronostics, seulement à déterminer le vainqueur.
+    extra_time_home_score: Mapped[int | None] = mapped_column(nullable=True)
+    extra_time_away_score: Mapped[int | None] = mapped_column(nullable=True)
+    penalties_home_score: Mapped[int | None] = mapped_column(nullable=True)
+    penalties_away_score: Mapped[int | None] = mapped_column(nullable=True)
+    # Équipe qualifiée tous prolongements confondus (tirs au but > prolongation > temps
+    # réglementaire). NULL pour un match de groupe nul, ou tant que le match n'est pas joué.
+    winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
 
     home_team: Mapped[Optional["Team"]] = relationship(foreign_keys=[home_team_id], back_populates="home_matches")
     away_team: Mapped[Optional["Team"]] = relationship(foreign_keys=[away_team_id], back_populates="away_matches")
+    winner_team: Mapped[Optional["Team"]] = relationship(foreign_keys=[winner_team_id], back_populates="won_matches")
     predictions: Mapped[list["Prediction"]] = relationship(back_populates="match")
     ai_prediction: Mapped[Optional["AiPrediction"]] = relationship(back_populates="match")

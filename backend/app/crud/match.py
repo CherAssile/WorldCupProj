@@ -8,7 +8,7 @@ def list_all(db: Session) -> list[Match]:
     """Tous les matchs du tournoi, triés par coup d'envoi, équipes préchargées."""
     stmt = (
         select(Match)
-        .options(joinedload(Match.home_team), joinedload(Match.away_team))
+        .options(joinedload(Match.home_team), joinedload(Match.away_team), joinedload(Match.winner_team))
         .order_by(Match.kickoff_at)
     )
     return list(db.execute(stmt).unique().scalars())
