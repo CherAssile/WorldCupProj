@@ -19,6 +19,7 @@ class Team(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     fifa_code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
     flag_url: Mapped[str | None] = mapped_column(String(255))
+    group_name: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     players: Mapped[list["Player"]] = relationship(back_populates="team")
     home_matches: Mapped[list["Match"]] = relationship(
