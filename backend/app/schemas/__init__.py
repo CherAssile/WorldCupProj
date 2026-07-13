@@ -1,5 +1,6 @@
 from app.schemas.award import AwardRead
 from app.schemas.award_prediction import AwardPredictionCreate, AwardPredictionRead
+from app.schemas.leaderboard import LeaderboardEntryRead, LeaderboardRecomputeResult
 from app.schemas.match import MatchPhaseGroup, MatchRead
 from app.schemas.player import PlayerRead, TeamPlayersGroup
 from app.schemas.prediction import PredictionCreate, PredictionRead, PredictionUpdate
@@ -10,6 +11,8 @@ __all__ = [
     "AwardPredictionCreate",
     "AwardPredictionRead",
     "AwardRead",
+    "LeaderboardEntryRead",
+    "LeaderboardRecomputeResult",
     "MatchPhaseGroup",
     "MatchRead",
     "PlayerRead",
