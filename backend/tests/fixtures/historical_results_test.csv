@@ -1,0 +1,7 @@
+date,home_team,away_team,home_score,away_score,tournament,city,country,neutral
+2031-06-01,France,Brazil,3,0,FIFA World Cup,Testville,Testland,FALSE
+2031-06-02,Argentina,Belgium,2,1,FIFA World Cup,Testville,Testland,FALSE
+2031-06-03,Norway,England,NA,NA,FIFA World Cup,Testville,Testland,FALSE
+2031-06-04,France,Brazil,1,1,Friendly,Testville,Testland,FALSE
+2031-06-05,Italy,USA,7,1,FIFA World Cup,Testville,Testland,FALSE
+2031-06-06,Belgium,United States,0,3,FIFA World Cup,Testville,Testland,TRUE
