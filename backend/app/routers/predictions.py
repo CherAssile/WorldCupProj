@@ -12,7 +12,7 @@ from app.models.prediction import Prediction
 from app.models.user import User
 from app.schemas.prediction import PredictionCreate, PredictionRead, PredictionUpdate
 
-router = APIRouter(prefix="/predictions", tags=["predictions"])
+router = APIRouter(prefix="/predictions", tags=["pronostics"])
 
 
 def _ensure_prediction_allowed(match: Match) -> None:

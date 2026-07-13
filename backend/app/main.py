@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
+from app.core.errors import install_exception_handlers
 from app.database import engine
 from app.redis_client import redis_client
 from app.routers import (
@@ -21,7 +22,39 @@ from app.routers import (
     training,
 )
 
-app = FastAPI(title="Mundial Pronos API")
+# Regroupement du /docs par domaine métier plutôt que par router technique : plusieurs
+# routers peuvent partager un même tag (ex. teams/matches/players -> "matchs").
+OPENAPI_TAGS = [
+    {"name": "auth", "description": "Inscription, connexion et profil de l'utilisateur."},
+    {"name": "matchs", "description": "Calendrier du tournoi, équipes, effectifs et compositions."},
+    {
+        "name": "pronostics",
+        "description": "Pronostics compétitifs sur les matchs à venir (Joueur contre Joueur, classement global).",
+    },
+    {
+        "name": "récompenses",
+        "description": "Récompenses individuelles (meilleur buteur, passeur, joueur) et pronostics associés.",
+    },
+    {"name": "classement", "description": "Classement global du concours compétitif."},
+    {
+        "name": "entraînement",
+        "description": "Joueur contre la Machine, sur des matchs déjà joués (Mondial en cours ou éditions "
+        "passées) : hors classement compétitif.",
+    },
+    {
+        "name": "simulation",
+        "description": "Bac à sable admin : simulation complète du tournoi, réservée aux administrateurs.",
+    },
+    {
+        "name": "admin",
+        "description": "Actions d'administration transverses aux autres domaines (recalculs, régénérations).",
+    },
+    {"name": "système", "description": "Supervision technique de l'API (santé du service et de ses dépendances)."},
+]
+
+app = FastAPI(title="Mundial Pronos API", openapi_tags=OPENAPI_TAGS)
+
+install_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -44,13 +77,13 @@ app.include_router(training.router)
 app.include_router(simulations.router)
 
 
-@app.get("/health")
+@app.get("/health", tags=["système"])
 def health() -> dict[str, str]:
     """Vérifie que le service backend est opérationnel."""
     return {"status": "ok"}
 
 
-@app.get("/health/deep")
+@app.get("/health/deep", tags=["système"])
 def health_deep(response: Response) -> dict[str, str]:
     """Vérifie l'API ainsi que les dépendances Postgres et Redis."""
     checks = {"api": "ok"}

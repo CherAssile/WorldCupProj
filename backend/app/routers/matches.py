@@ -7,9 +7,11 @@ from app.models.ai_prediction import AiPrediction
 from app.models.enums import MatchPhase
 from app.models.match import Match
 from app.schemas.ai_prediction import AiPredictionRead
+from app.schemas.lineup import LineupPlayerRead, MatchLineupsRead, TeamLineupRead
 from app.schemas.match import MatchPhaseGroup
+from app.schemas.team import TeamRead
 
-router = APIRouter(prefix="/matches", tags=["matches"])
+router = APIRouter(prefix="/matches", tags=["matchs"])
 
 
 @router.get("", response_model=list[MatchPhaseGroup])
@@ -34,3 +36,48 @@ def get_match_ai_prediction(match_id: int, db: Session = Depends(get_db)) -> AiP
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun pronostic IA pour ce match.")
 
     return prediction
+
+
+@router.get("/{match_id}/lineups", response_model=MatchLineupsRead)
+def get_match_lineups(match_id: int, db: Session = Depends(get_db)) -> MatchLineupsRead:
+    """Compositions des deux équipes pour ce match.
+
+    Les compositions ne sortent qu'environ 1h avant le coup d'envoi : leur absence est un
+    état NORMAL (available=False), jamais une erreur -- seul un match introuvable renvoie
+    une 404.
+    """
+    match = crud.match.get_by_id(db, match_id)
+    if match is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Match introuvable.")
+
+    lineups = crud.lineup.get_by_match(db, match_id)
+    if not lineups:
+        return MatchLineupsRead(match_id=match_id, available=False, message="Composition non encore annoncée.")
+
+    by_team_id = {lineup.team_id: lineup for lineup in lineups}
+
+    def _build(team_id: int | None) -> TeamLineupRead | None:
+        lineup = by_team_id.get(team_id) if team_id is not None else None
+        if lineup is None:
+            return None
+        return TeamLineupRead(
+            team=TeamRead.model_validate(lineup.team),
+            formation=lineup.formation,
+            players=[
+                LineupPlayerRead(
+                    player_id=entry.player_id,
+                    name=entry.player.name,
+                    position=entry.position,
+                    shirt_number=entry.shirt_number,
+                    is_starter=entry.is_starter,
+                )
+                for entry in lineup.players
+            ],
+        )
+
+    return MatchLineupsRead(
+        match_id=match_id,
+        available=True,
+        home=_build(match.home_team_id),
+        away=_build(match.away_team_id),
+    )

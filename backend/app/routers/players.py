@@ -7,7 +7,7 @@ from app.models.player import Player
 from app.models.team import Team
 from app.schemas.player import TeamPlayersGroup
 
-router = APIRouter(prefix="/players", tags=["players"])
+router = APIRouter(prefix="/players", tags=["matchs"])
 
 
 @router.get("", response_model=list[TeamPlayersGroup])

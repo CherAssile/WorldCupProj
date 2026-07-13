@@ -7,7 +7,7 @@ from app.models.user import User
 from app.schemas.ai_prediction import AiPredictionGenerationResult
 from app.services.ai_predictions import generate_ai_predictions
 
-router = APIRouter(prefix="/ai-predictions", tags=["ai-predictions"])
+router = APIRouter(prefix="/ai-predictions", tags=["admin"])
 
 
 @router.post("/regenerate", response_model=AiPredictionGenerationResult)

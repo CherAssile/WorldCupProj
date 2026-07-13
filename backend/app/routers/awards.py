@@ -5,7 +5,7 @@ from app import crud
 from app.database import get_db
 from app.schemas.award import AwardRead
 
-router = APIRouter(prefix="/awards", tags=["awards"])
+router = APIRouter(prefix="/awards", tags=["récompenses"])
 
 
 @router.get("", response_model=list[AwardRead])

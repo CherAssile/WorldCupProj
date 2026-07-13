@@ -10,7 +10,7 @@ from app.models.award_prediction import AwardPrediction
 from app.models.user import User
 from app.schemas.award_prediction import AwardPredictionCreate, AwardPredictionRead
 
-router = APIRouter(prefix="/award-predictions", tags=["award-predictions"])
+router = APIRouter(prefix="/award-predictions", tags=["récompenses"])
 
 
 @router.post("", response_model=AwardPredictionRead)

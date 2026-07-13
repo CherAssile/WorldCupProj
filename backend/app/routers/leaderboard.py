@@ -8,7 +8,7 @@ from app.redis_client import redis_client
 from app.schemas.leaderboard import LeaderboardEntryRead, LeaderboardRecomputeResult
 from app.services import leaderboard as leaderboard_service
 
-router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
+router = APIRouter(prefix="/leaderboard", tags=["classement"])
 
 
 @router.get("", response_model=list[LeaderboardEntryRead])
@@ -17,7 +17,7 @@ def get_leaderboard(db: Session = Depends(get_db)) -> list[leaderboard_service.L
     return leaderboard_service.get_leaderboard(db, redis_client)
 
 
-@router.post("/recompute", response_model=LeaderboardRecomputeResult)
+@router.post("/recompute", response_model=LeaderboardRecomputeResult, tags=["admin"])
 def recompute_leaderboard(
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),

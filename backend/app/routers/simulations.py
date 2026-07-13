@@ -8,7 +8,7 @@ from app.models.user import User
 from app.schemas.simulation import SimulationCreate, SimulationRunDetailRead, SimulationRunRead
 from app.services.simulation import AIServiceUnavailable, run_alternate_simulation, run_realistic_simulation
 
-router = APIRouter(prefix="/simulations", tags=["simulations"])
+router = APIRouter(prefix="/simulations", tags=["simulation"])
 
 
 @router.post("", response_model=SimulationRunDetailRead, status_code=status.HTTP_201_CREATED)
