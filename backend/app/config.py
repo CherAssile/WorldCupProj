@@ -6,9 +6,12 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://mundial:changeme@localhost:5432/mundial_pronos"
+    # Pas de valeur par défaut pour un secret réel : une variable d'env manquante doit
+    # faire échouer le démarrage plutôt que de faire tourner l'app avec une valeur connue
+    # (cf. .env.example).
+    database_url: str
+    secret_key: str
     redis_url: str = "redis://localhost:6379/0"
-    secret_key: str = "changeme-dev-secret-key"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     ai_service_url: str = "http://localhost:8001"

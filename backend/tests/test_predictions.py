@@ -83,6 +83,45 @@ def test_update_after_kickoff_rejected(client: TestClient, db_session: Session) 
     assert response.status_code == 409
 
 
+def test_create_prediction_after_kickoff_rejected(client: TestClient, db_session: Session) -> None:
+    """Verrouillage côté serveur dès la création, pas seulement à la modification : le
+    coup d'envoi est déjà passé au moment même de la tentative de pronostic."""
+    headers = _register_and_login(client, "joueur2b@example.com")
+    home, away, _ = _create_teams(db_session, "PST")
+    match = _create_match(db_session, home, away, MatchPhase.GROUP, PAST_KICKOFF)
+
+    response = client.post(
+        "/predictions",
+        json={"match_id": match.id, "predicted_home_score": 1, "predicted_away_score": 1},
+        headers=headers,
+    )
+    assert response.status_code == 409
+
+
+def test_update_other_users_prediction_rejected(client: TestClient, db_session: Session) -> None:
+    """Un pronostic n'appartient qu'à son auteur : un autre utilisateur authentifié ne doit
+    jamais pouvoir le modifier (404, pas 403, pour ne pas même révéler qu'il existe)."""
+    owner_headers = _register_and_login(client, "owner-pred@example.com")
+    home, away, _ = _create_teams(db_session, "OWN")
+    match = _create_match(db_session, home, away, MatchPhase.GROUP, FUTURE_KICKOFF)
+
+    created = client.post(
+        "/predictions",
+        json={"match_id": match.id, "predicted_home_score": 1, "predicted_away_score": 1},
+        headers=owner_headers,
+    )
+    assert created.status_code == 201
+    prediction_id = created.json()["id"]
+
+    intruder_headers = _register_and_login(client, "intruder-pred@example.com")
+    response = client.put(
+        f"/predictions/{prediction_id}",
+        json={"predicted_home_score": 5, "predicted_away_score": 0},
+        headers=intruder_headers,
+    )
+    assert response.status_code == 404
+
+
 def test_double_prediction_same_match_rejected(client: TestClient, db_session: Session) -> None:
     headers = _register_and_login(client, "joueur3@example.com")
     home, away, _ = _create_teams(db_session, "DBL")

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.models.award import Award
@@ -69,6 +70,27 @@ def test_quarter_final_and_beyond_doubles_the_match_total() -> None:
     match = _match(MatchPhase.QUARTER_FINAL, 1, 1, winner_team_id=39)
     prediction = _prediction(1, 1, predicted_winner_team_id=39)
     assert scoring.score_match_prediction(prediction, match) == (3 + 2) * 2
+
+
+@pytest.mark.parametrize("phase", list(MatchPhase))
+def test_doubling_coefficient_applies_exactly_from_quarter_finals_onward(phase: MatchPhase) -> None:
+    """Règle CLAUDE.md : coefficient x2 "à partir des quarts". Couvre CHAQUE phase du
+    tournoi individuellement (pas seulement un représentant) : une omission ou un ajout
+    accidentel dans DOUBLED_PHASES casserait ce test, phase par phase."""
+    match = _match(phase, 1, 1, winner_team_id=39)
+    prediction = _prediction(1, 1, predicted_winner_team_id=39)
+    base_total = 3 + (0 if phase == MatchPhase.GROUP else 2)  # score exact + qualifié (hors poule)
+
+    expected = base_total * 2 if phase in scoring.DOUBLED_PHASES else base_total
+    assert scoring.score_match_prediction(prediction, match) == expected
+
+    should_double = phase in (
+        MatchPhase.QUARTER_FINAL,
+        MatchPhase.SEMI_FINAL,
+        MatchPhase.THIRD_PLACE,
+        MatchPhase.FINAL,
+    )
+    assert (phase in scoring.DOUBLED_PHASES) == should_double
 
 
 def test_unplayed_match_scores_0_points() -> None:
