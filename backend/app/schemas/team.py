@@ -9,3 +9,5 @@ class TeamRead(BaseModel):
     fifa_code: str
     flag_url: str | None
     group_name: str | None
+    coach_name: str | None
+    coach_photo_url: str | None
