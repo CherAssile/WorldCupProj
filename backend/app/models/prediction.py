@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -8,6 +8,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.match import Match
+    from app.models.team import Team
     from app.models.user import User
 
 
@@ -22,6 +23,9 @@ class Prediction(Base):
     match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), nullable=False)
     predicted_home_score: Mapped[int] = mapped_column(nullable=False)
     predicted_away_score: Mapped[int] = mapped_column(nullable=False)
+    # Qualifié pronostiqué, tous prolongements confondus. Obligatoire à élimination directe,
+    # interdit en phase de groupe (imposé côté application, pas en base).
+    predicted_winner_team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -29,3 +33,4 @@ class Prediction(Base):
 
     user: Mapped["User"] = relationship(back_populates="predictions")
     match: Mapped["Match"] = relationship(back_populates="predictions")
+    predicted_winner_team: Mapped[Optional["Team"]] = relationship(foreign_keys=[predicted_winner_team_id])

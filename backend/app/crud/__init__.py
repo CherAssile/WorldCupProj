@@ -1,3 +1,3 @@
-from app.crud import match, player, team, user
+from app.crud import match, player, prediction, team, user
 
-__all__ = ["match", "player", "team", "user"]
+__all__ = ["match", "player", "prediction", "team", "user"]

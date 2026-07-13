@@ -12,3 +12,7 @@ def list_all(db: Session) -> list[Match]:
         .order_by(Match.kickoff_at)
     )
     return list(db.execute(stmt).unique().scalars())
+
+
+def get_by_id(db: Session, match_id: int) -> Match | None:
+    return db.get(Match, match_id)
