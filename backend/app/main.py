@@ -16,6 +16,7 @@ from app.routers import (
     matches,
     players,
     predictions,
+    simulations,
     teams,
     training,
 )
@@ -40,6 +41,7 @@ app.include_router(award_predictions.router)
 app.include_router(leaderboard.router)
 app.include_router(ai_predictions.router)
 app.include_router(training.router)
+app.include_router(simulations.router)
 
 
 @app.get("/health")

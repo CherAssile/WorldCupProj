@@ -23,3 +23,10 @@ class AwardCategory(str, Enum):
     TOP_SCORER = "top_scorer"
     TOP_ASSIST = "top_assist"
     BEST_PLAYER = "best_player"
+
+
+class SimulationMode(str, Enum):
+    """Mode de simulation admin. Un seul mode implémenté pour l'instant : réaliste (matchs
+    déjà joués gelés à leur résultat réel, matchs futurs simulés via le service IA)."""
+
+    REALISTIC = "realiste"
