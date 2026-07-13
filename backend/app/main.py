@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.config import settings
 from app.database import engine
 from app.redis_client import redis_client
-from app.routers import auth, award_predictions, awards, leaderboard, matches, players, predictions, teams
+from app.routers import ai_predictions, auth, award_predictions, awards, leaderboard, matches, players, predictions, teams
 
 app = FastAPI(title="Mundial Pronos API")
 
@@ -27,6 +27,7 @@ app.include_router(predictions.router)
 app.include_router(awards.router)
 app.include_router(award_predictions.router)
 app.include_router(leaderboard.router)
+app.include_router(ai_predictions.router)
 
 
 @app.get("/health")
