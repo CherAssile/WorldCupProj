@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     ai_service_url: str = "http://localhost:8001"
     cors_origins: str = "http://localhost:5173"
+    football_api_key: str | None = None
 
     @property
     def cors_origins_list(self) -> list[str]:
