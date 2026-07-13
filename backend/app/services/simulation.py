@@ -230,10 +230,15 @@ def _simulate_group_phase(
     db: Session,
     ai_client: AIClient,
     team_groups: dict[int, str],
+    freeze_played: bool,
 ) -> tuple[list[SimulatedMatch], dict[str, list[GroupMatchResult]]]:
     """Un match de groupe déjà joué garde son résultat réel (gelé) ; un match à venir est
     simulé via le service IA. Les deux équipes sont toujours connues dès le tirage au sort
-    (jamais de placeholder en phase de groupes)."""
+    (jamais de placeholder en phase de groupes).
+
+    `freeze_played=False` (mode alternatif) : ignore le résultat réel même s'il existe,
+    resimule systématiquement via l'IA -- aucun match de groupe n'est jamais gelé.
+    """
     stmt = select(Match).where(Match.phase == MatchPhase.GROUP).order_by(Match.kickoff_at)
     matches = list(db.execute(stmt).scalars())
 
@@ -244,7 +249,7 @@ def _simulate_group_phase(
         if match.home_team_id is None or match.away_team_id is None:
             continue  # garde de prudence : ne devrait jamais arriver en phase de groupes
 
-        if match.home_score is not None:
+        if freeze_played and match.home_score is not None:
             home_score, away_score = match.home_score, match.away_score
             is_frozen = True
         else:
@@ -328,26 +333,37 @@ def _simulate_knockout_match(
     )
 
 
-def run_realistic_simulation(
+def _run_simulation(
     db: Session,
     created_by_user_id: int,
-    label: str | None = None,
-    ai_client: AIClient | None = None,
+    mode: SimulationMode,
+    freeze_played: bool,
+    label: str | None,
+    ai_client: AIClient | None,
+    seed: str | None,
 ) -> SimulationRun:
-    """Simule un tournoi complet en mode réaliste (seul mode implémenté) : matchs déjà
-    joués gelés à leur résultat réel, matchs futurs simulés via le service IA.
+    """Simule un tournoi complet (groupes -> classements -> tableau -> finale).
+
+    `freeze_played=True` (mode réaliste) : les matchs déjà joués gardent leur résultat
+    réel. `freeze_played=False` (mode alternatif) : tout est resimulé via le service IA,
+    matchs déjà joués compris.
+
+    `seed` : graine du départage déterministe des matchs à élimination directe simulés sur
+    une égalité (cf. `_resolve_penalty_winner`). Générée si non fournie, mais toujours
+    conservée sur le run persisté -- deux appels avec la même graine (et les mêmes données)
+    produisent exactement le même résultat.
 
     Calcule tout en mémoire avant de rien persister : si le service IA devient
     indisponible en cours de route, `AIServiceUnavailable` est levée et rien n'est écrit
     (jamais de tournoi partiellement simulé). Un seul commit, à la toute fin.
     """
     ai_client = ai_client or AIClient()
-    tie_break_seed = uuid.uuid4().hex
+    tie_break_seed = seed or uuid.uuid4().hex
 
     team_groups = _team_group_map(db)
-    real_results = _real_results_by_phase_and_pair(db)
+    real_results = _real_results_by_phase_and_pair(db) if freeze_played else {}
 
-    simulated_matches, group_results = _simulate_group_phase(db, ai_client, team_groups)
+    simulated_matches, group_results = _simulate_group_phase(db, ai_client, team_groups, freeze_played)
 
     winners: list[GroupStanding] = []
     runners_up: list[GroupStanding] = []
@@ -390,7 +406,7 @@ def run_realistic_simulation(
             break
         current_pairs = [(winner_ids[i], winner_ids[i + 1]) for i in range(0, len(winner_ids), 2)]
 
-    run = SimulationRun(created_by_user_id=created_by_user_id, mode=SimulationMode.REALISTIC, label=label)
+    run = SimulationRun(created_by_user_id=created_by_user_id, mode=mode, seed=tie_break_seed, label=label)
     db.add(run)
     db.flush()
 
@@ -411,3 +427,43 @@ def run_realistic_simulation(
     db.commit()
     db.refresh(run)
     return run
+
+
+def run_realistic_simulation(
+    db: Session,
+    created_by_user_id: int,
+    label: str | None = None,
+    ai_client: AIClient | None = None,
+    seed: str | None = None,
+) -> SimulationRun:
+    """Mode réaliste : les matchs déjà joués gardent leur résultat réel (gelés), seuls les
+    matchs futurs sont simulés via le service IA."""
+    return _run_simulation(
+        db,
+        created_by_user_id,
+        SimulationMode.REALISTIC,
+        freeze_played=True,
+        label=label,
+        ai_client=ai_client,
+        seed=seed,
+    )
+
+
+def run_alternate_simulation(
+    db: Session,
+    created_by_user_id: int,
+    label: str | None = None,
+    ai_client: AIClient | None = None,
+    seed: str | None = None,
+) -> SimulationRun:
+    """Mode alternatif : resimule TOUT le tournoi via le service IA depuis la phase de
+    groupes, matchs déjà joués compris -- jamais de gel, contrairement au mode réaliste."""
+    return _run_simulation(
+        db,
+        created_by_user_id,
+        SimulationMode.ALTERNATE,
+        freeze_played=False,
+        label=label,
+        ai_client=ai_client,
+        seed=seed,
+    )

@@ -6,7 +6,7 @@ from app.database import get_db
 from app.deps import require_admin
 from app.models.user import User
 from app.schemas.simulation import SimulationCreate, SimulationRunDetailRead, SimulationRunRead
-from app.services.simulation import AIServiceUnavailable, run_realistic_simulation
+from app.services.simulation import AIServiceUnavailable, run_alternate_simulation, run_realistic_simulation
 
 router = APIRouter(prefix="/simulations", tags=["simulations"])
 
@@ -17,10 +17,14 @@ def create_simulation(
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> SimulationRunDetailRead:
-    """Lance une simulation complète du tournoi (bac à sable admin, mode réaliste). Réservé
-    aux administrateurs -- n'affecte jamais matches/predictions/scores/classement."""
+    """Lance une simulation complète du tournoi (bac à sable admin). Réservé aux
+    administrateurs -- n'affecte jamais matches/predictions/scores/classement.
+
+    Mode réaliste : matchs déjà joués gelés. Mode alternatif : tout resimulé via l'IA,
+    matchs déjà joués compris (cf. services/simulation.py)."""
+    run_simulation = run_realistic_simulation if payload.mode == "realiste" else run_alternate_simulation
     try:
-        run = run_realistic_simulation(db, created_by_user_id=admin.id, label=payload.label)
+        run = run_simulation(db, created_by_user_id=admin.id, label=payload.label)
     except AIServiceUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 

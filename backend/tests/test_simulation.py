@@ -386,6 +386,90 @@ def test_run_realistic_simulation_raises_and_persists_nothing_when_ai_unavailabl
     assert db_session.query(SimulationMatchResult).count() == results_before
 
 
+def test_run_alternate_simulation_isolation(db_session: Session) -> None:
+    """Étend le test d'isolation au mode alternatif : même en resimulant tout, aucune
+    écriture vers matches/predictions/scores."""
+    _clear_real_matches(db_session)
+    admin = _create_admin(db_session, "altiso")
+    _build_full_tournament(db_session)
+
+    predictions_before = db_session.query(Prediction).count()
+    scores_before = db_session.query(Score).count()
+    matches_snapshot_before = {
+        match.id: (match.home_score, match.away_score) for match in db_session.query(Match).all()
+    }
+
+    simulation.run_alternate_simulation(db_session, created_by_user_id=admin.id, ai_client=_FakeAIClient())
+
+    assert db_session.query(Prediction).count() == predictions_before
+    assert db_session.query(Score).count() == scores_before
+    matches_snapshot_after = {
+        match.id: (match.home_score, match.away_score) for match in db_session.query(Match).all()
+    }
+    assert matches_snapshot_after == matches_snapshot_before
+
+
+def test_run_alternate_simulation_resimulates_already_played_matches(db_session: Session) -> None:
+    """Le mode alternatif ne gèle jamais un résultat, contrairement au mode réaliste,
+    même quand le match a déjà réellement été joué."""
+    _clear_real_matches(db_session)
+    admin = _create_admin(db_session, "altresim")
+    _build_full_tournament(db_session)  # tout est déjà joué (aurait été gelé en mode réaliste)
+    fake = _FakeAIClient()
+
+    run = simulation.run_alternate_simulation(db_session, created_by_user_id=admin.id, ai_client=fake)
+
+    group_rows = (
+        db_session.query(SimulationMatchResult)
+        .filter(SimulationMatchResult.simulation_run_id == run.id, SimulationMatchResult.phase == MatchPhase.GROUP)
+        .all()
+    )
+    assert len(group_rows) == 72
+    assert all(row.is_frozen_real_result is False for row in group_rows)
+    # Tout est simulé, y compris les 72 matchs de groupe déjà joués (104 = 72 + 32 de phase finale).
+    assert fake.calls == 104
+
+
+def test_run_alternate_simulation_same_seed_gives_same_result(db_session: Session) -> None:
+    """Test obligatoire : deux exécutions avec la même graine donnent le même résultat."""
+    _clear_real_matches(db_session)
+    admin = _create_admin(db_session, "altseed")
+    _build_full_tournament(db_session)
+    seed = "graine-de-test-fixe"
+
+    run1 = simulation.run_alternate_simulation(
+        db_session, created_by_user_id=admin.id, ai_client=_FakeAIClient(), seed=seed
+    )
+    run2 = simulation.run_alternate_simulation(
+        db_session, created_by_user_id=admin.id, ai_client=_FakeAIClient(), seed=seed
+    )
+
+    assert run1.seed == run2.seed == seed
+
+    def _signature(run_id: int) -> list[tuple]:
+        rows = (
+            db_session.query(SimulationMatchResult)
+            .filter(SimulationMatchResult.simulation_run_id == run_id)
+            .order_by(
+                SimulationMatchResult.phase, SimulationMatchResult.home_team_id, SimulationMatchResult.away_team_id
+            )
+            .all()
+        )
+        return [
+            (
+                r.phase,
+                r.home_team_id,
+                r.away_team_id,
+                r.simulated_home_score,
+                r.simulated_away_score,
+                r.winner_team_id,
+            )
+            for r in rows
+        ]
+
+    assert _signature(run1.id) == _signature(run2.id)
+
+
 # ---------------------------------------------------------------------------
 # Endpoints HTTP.
 # ---------------------------------------------------------------------------
@@ -398,6 +482,18 @@ def test_post_simulations_requires_admin(client: TestClient, db_session: Session
     token = create_access_token(subject=str(non_admin.id))
 
     response = client.post("/simulations", json={"mode": "realiste"}, headers={"Authorization": f"Bearer {token}"})
+
+    assert response.status_code == 403
+
+
+def test_post_simulations_alternate_mode_requires_admin(client: TestClient, db_session: Session) -> None:
+    """Test obligatoire : le mode alternatif est lui aussi réservé aux administrateurs."""
+    non_admin = User(email="simreg3@example.com", username="simreg3", hashed_password="x", is_admin=False)
+    db_session.add(non_admin)
+    db_session.flush()
+    token = create_access_token(subject=str(non_admin.id))
+
+    response = client.post("/simulations", json={"mode": "alternatif"}, headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 403
 
@@ -447,3 +543,24 @@ def test_post_simulations_creates_full_tournament_for_admin(client: TestClient, 
     detail_response = client.get(f"/simulations/{run_id}", headers={"Authorization": f"Bearer {token}"})
     assert detail_response.status_code == 200
     assert len(detail_response.json()["results"]) == 104
+
+
+def test_post_simulations_alternate_mode_creates_full_tournament_for_admin(
+    client: TestClient, db_session: Session
+) -> None:
+    _clear_real_matches(db_session)
+    admin = _create_admin(db_session, "h")
+    _build_full_tournament(db_session)
+    token = create_access_token(subject=str(admin.id))
+
+    response = client.post(
+        "/simulations",
+        json={"mode": "alternatif", "label": "Test alternatif"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["mode"] == "alternatif"
+    assert len(body["results"]) == 104
+    assert all(result["is_frozen_real_result"] is False for result in body["results"])

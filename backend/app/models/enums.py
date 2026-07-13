@@ -26,7 +26,11 @@ class AwardCategory(str, Enum):
 
 
 class SimulationMode(str, Enum):
-    """Mode de simulation admin. Un seul mode implémenté pour l'instant : réaliste (matchs
-    déjà joués gelés à leur résultat réel, matchs futurs simulés via le service IA)."""
+    """Mode de simulation admin.
+
+    - realiste : matchs déjà joués gelés à leur résultat réel, matchs futurs simulés.
+    - alternatif : resimule TOUT le tournoi via le service IA, matchs déjà joués compris.
+    """
 
     REALISTIC = "realiste"
+    ALTERNATE = "alternatif"

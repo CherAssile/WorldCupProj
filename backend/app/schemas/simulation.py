@@ -8,8 +8,8 @@ from app.schemas.team import TeamRead
 
 
 class SimulationCreate(BaseModel):
-    # Seul le mode réaliste est implémenté pour l'instant (CLAUDE.md, services/simulation.py).
-    mode: Literal["realiste"] = "realiste"
+    # realiste : matchs déjà joués gelés. alternatif : tout resimulé (cf. services/simulation.py).
+    mode: Literal["realiste", "alternatif"] = "realiste"
     label: str | None = None
 
 
@@ -31,6 +31,7 @@ class SimulationRunRead(BaseModel):
 
     id: int
     mode: SimulationMode
+    seed: str
     label: str | None
     created_at: datetime
     created_by_user_id: int
