@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from app.models.award import Award
 from app.models.award_prediction import AwardPrediction
 from app.models.enums import MatchPhase
+from app.models.historical_match import HistoricalMatch
 from app.models.match import Match
 from app.models.prediction import Prediction
 from app.models.score import Score
@@ -57,14 +58,22 @@ def is_exact_score(prediction: Prediction, match: Match) -> bool:
     )
 
 
+def _points_for_score_guess(predicted_home: int, predicted_away: int, actual_home: int, actual_away: int) -> int:
+    """Score exact (3) OU issue correcte sans score exact (1), sinon 0. Primitive commune
+    au compétitif et à l'entraînement (même barème, cf. CLAUDE.md)."""
+    if (predicted_home, predicted_away) == (actual_home, actual_away):
+        return EXACT_SCORE_POINTS
+    if _outcome(predicted_home, predicted_away) == _outcome(actual_home, actual_away):
+        return CORRECT_OUTCOME_POINTS
+    return 0
+
+
 def _score_points(prediction: Prediction, match: Match) -> int:
     if match.home_score is None or match.away_score is None:
         return 0
-    if is_exact_score(prediction, match):
-        return EXACT_SCORE_POINTS
-    predicted_outcome = _outcome(prediction.predicted_home_score, prediction.predicted_away_score)
-    actual_outcome = _outcome(match.home_score, match.away_score)
-    return CORRECT_OUTCOME_POINTS if predicted_outcome == actual_outcome else 0
+    return _points_for_score_guess(
+        prediction.predicted_home_score, prediction.predicted_away_score, match.home_score, match.away_score
+    )
 
 
 def _qualifier_points(prediction: Prediction, match: Match) -> int:
@@ -90,6 +99,19 @@ def score_award_prediction(prediction: AwardPrediction, award: Award) -> int:
     if award.actual_player_id is None:
         return 0
     return CORRECT_AWARD_POINTS if prediction.predicted_player_id == award.actual_player_id else 0
+
+
+def score_training_guess(predicted_home: int, predicted_away: int, match: HistoricalMatch) -> int:
+    """Points d'un pronostic d'entraînement (utilisateur OU IA) contre un match historique.
+
+    Même barème de score que le compétitif (même primitive), avec le même coefficient de
+    phase finale. Pas de volet qualifié : l'entraînement ne porte que sur le score, il n'y
+    a pas de vainqueur à élimination directe pronostiqué (training_predictions n'a pas ce
+    champ)."""
+    points = _points_for_score_guess(predicted_home, predicted_away, match.home_score, match.away_score)
+    if match.phase in DOUBLED_PHASES:
+        points *= 2
+    return points
 
 
 @dataclass
