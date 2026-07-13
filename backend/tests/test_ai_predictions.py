@@ -18,7 +18,9 @@ PAST_KICKOFF = datetime.now(timezone.utc) - timedelta(days=1)
 def _clear_matches(db_session: Session) -> None:
     """Le calendrier réel peut déjà contenir des matchs à venir (les demies, tant qu'elles
     ne sont pas jouées) : generate_ai_predictions les traiterait aussi, faussant les
-    comptages de ce test. Repart d'une base sans match, sans effet hors de la transaction."""
+    comptages de ce test. Purge d'abord ai_predictions (FK vers matches), sans effet hors
+    de la transaction de test."""
+    db_session.query(AiPrediction).delete()
     db_session.query(Match).delete()
     db_session.flush()
 

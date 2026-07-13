@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.orm import Session
 
+from app.models.ai_prediction import AiPrediction
 from app.models.award import Award
 from app.models.enums import AwardCategory, MatchPhase, MatchStatus
 from app.models.match import Match
@@ -16,7 +17,9 @@ FINAL_KICKOFF = datetime(2031, 7, 19, 15, 0, tzinfo=timezone.utc)
 def _clear_matches_and_create_final(db_session: Session, kickoff_at: datetime) -> Match:
     """Repart d'une base sans match ni récompense : le calendrier et les récompenses réels
     peuvent déjà exister (services/seed.py, services/awards_seed.py), ce qui rendrait ce
-    test ambigu. Sans effet hors de la transaction de test."""
+    test ambigu. Purge d'abord ai_predictions (FK vers matches), sans effet hors de la
+    transaction de test."""
+    db_session.query(AiPrediction).delete()
     db_session.query(Match).delete()
     db_session.query(Award).delete()
     db_session.flush()
@@ -37,6 +40,7 @@ def _clear_matches_and_create_final(db_session: Session, kickoff_at: datetime) -
 
 def test_awards_seed_requires_a_final_match(db_session: Session) -> None:
     """Sans finale connue dans le calendrier, impossible de caler la date limite."""
+    db_session.query(AiPrediction).delete()
     db_session.query(Match).delete()
     db_session.flush()
 

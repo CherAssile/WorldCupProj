@@ -12,6 +12,7 @@ from app.models.simulation_run import SimulationRun
 from app.models.team import Team
 from app.models.training_prediction import TrainingPrediction
 from app.models.training_session import TrainingSession
+from app.models.training_session_match import TrainingSessionMatch
 from app.models.user import User
 
 __all__ = [
@@ -31,5 +32,6 @@ __all__ = [
     "Team",
     "TrainingPrediction",
     "TrainingSession",
+    "TrainingSessionMatch",
     "User",
 ]

@@ -8,6 +8,7 @@ from app.database import Base
 
 if TYPE_CHECKING:
     from app.models.training_prediction import TrainingPrediction
+    from app.models.training_session_match import TrainingSessionMatch
     from app.models.user import User
 
 
@@ -26,3 +27,6 @@ class TrainingSession(Base):
 
     user: Mapped["User"] = relationship(back_populates="training_sessions")
     predictions: Mapped[list["TrainingPrediction"]] = relationship(back_populates="training_session")
+    session_matches: Mapped[list["TrainingSessionMatch"]] = relationship(
+        back_populates="training_session", order_by="TrainingSessionMatch.position"
+    )

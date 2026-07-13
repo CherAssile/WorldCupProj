@@ -3,9 +3,9 @@ from sqlalchemy import inspect
 import app.models  # noqa: F401 -- charge tous les modèles pour peupler Base.metadata
 from app.database import Base, engine
 
-# CLAUDE.md annonce 15 tables mais la répartition par catégorie n'en liste que 14 ;
-# c'est le nombre réellement mappé dans app.models à date.
-EXPECTED_TABLE_COUNT = 14
+# CLAUDE.md annonce 15 tables ; training_session_matches (tirage avant pronostic, absente
+# de la répartition par catégorie du document) porte le compte réel à ce total.
+EXPECTED_TABLE_COUNT = 15
 
 
 def test_all_tables_exist_after_migration() -> None:

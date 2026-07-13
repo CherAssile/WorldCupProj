@@ -6,6 +6,7 @@ from app.schemas.match import MatchPhaseGroup, MatchRead
 from app.schemas.player import PlayerRead, TeamPlayersGroup
 from app.schemas.prediction import PredictionCreate, PredictionRead, PredictionUpdate
 from app.schemas.team import TeamRead
+from app.schemas.training import TrainingMatchRead, TrainingSessionCreate, TrainingSessionRead
 from app.schemas.user import Token, UserCreate, UserRead
 
 __all__ = [
@@ -25,6 +26,9 @@ __all__ = [
     "TeamPlayersGroup",
     "TeamRead",
     "Token",
+    "TrainingMatchRead",
+    "TrainingSessionCreate",
+    "TrainingSessionRead",
     "UserCreate",
     "UserRead",
 ]
