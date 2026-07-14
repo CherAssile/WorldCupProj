@@ -16,11 +16,13 @@ dist/
 # Docker
 *.log
 
-# Données et modèles générés (régénérables via ai-service/app/services/data_prep.py et
-# dixon_coles.py) : seule la source vendorée (international_results_fallback.csv) est
-# versionnée.
+# Données et modèles générés (régénérables via ai-service/app/services/data_prep.py,
+# dixon_coles.py et evaluation.py) : seule la source vendorée
+# (international_results_fallback.csv) est versionnée.
 ai-service/app/data/*.parquet
 ai-service/app/data/*.json
+ai-service/app/data/*.txt
+ai-service/app/data/*.joblib
 
 # IDE / OS
 .vscode/
