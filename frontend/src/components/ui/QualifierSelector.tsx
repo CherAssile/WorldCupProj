@@ -1,7 +1,8 @@
 export interface QualifierOption {
   id: string;
   label: string;
-  flagGradient: string;
+  fifaCode: string;
+  flagUrl: string | null;
 }
 
 interface QualifierSelectorProps {
@@ -35,7 +36,13 @@ export function QualifierSelector({ options, value, onChange }: QualifierSelecto
                   : "border-line bg-[#0F1729] text-[#C4CBD8]"
               }`}
             >
-              <span className="h-[22px] w-[22px] rounded-full" style={{ background: option.flagGradient }} />
+              {option.flagUrl ? (
+                <img src={option.flagUrl} alt="" className="h-[22px] w-[22px] rounded-full object-cover" />
+              ) : (
+                <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-elevated text-[8px] font-extrabold text-ink-secondary">
+                  {option.fifaCode}
+                </span>
+              )}
               {option.label}
             </button>
           );

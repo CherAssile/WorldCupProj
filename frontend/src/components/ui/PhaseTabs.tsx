@@ -1,27 +1,18 @@
-export type Phase = "groupes" | "huitiemes" | "quarts" | "demies" | "finale";
-
-interface PhaseTabDef {
-  id: Phase;
+export interface PhaseTabDef<T extends string> {
+  id: T;
   label: string;
 }
 
-const PHASE_TABS: PhaseTabDef[] = [
-  { id: "groupes", label: "Groupes" },
-  { id: "huitiemes", label: "8es" },
-  { id: "quarts", label: "Quarts" },
-  { id: "demies", label: "Demies" },
-  { id: "finale", label: "Finale" },
-];
-
-interface PhaseTabsProps {
-  value: Phase;
-  onChange: (phase: Phase) => void;
+interface PhaseTabsProps<T extends string> {
+  tabs: PhaseTabDef<T>[];
+  value: T;
+  onChange: (value: T) => void;
 }
 
-export function PhaseTabs({ value, onChange }: PhaseTabsProps) {
+export function PhaseTabs<T extends string>({ tabs, value, onChange }: PhaseTabsProps<T>) {
   return (
     <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {PHASE_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = tab.id === value;
         return (
           <button

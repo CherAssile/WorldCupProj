@@ -1,12 +1,13 @@
-import { PointsPill } from "./PointsPill";
+import { Button } from "./Button";
 import { QualifierSelector, type QualifierOption } from "./QualifierSelector";
 import { ScoreInput } from "./ScoreInput";
 
-type MatchCardStatus = "editable" | "locked" | "graded";
+type MatchCardStatus = "editable" | "locked" | "graded" | "pending";
 
-interface MatchTeam {
+export interface MatchTeamInfo {
   name: string;
-  flagGradient: string;
+  fifaCode: string;
+  flagUrl: string | null;
 }
 
 const CONTAINER_CLASSES: Record<MatchCardStatus, string> = {
@@ -15,12 +16,14 @@ const CONTAINER_CLASSES: Record<MatchCardStatus, string> = {
   locked: "border border-white/[0.05] bg-[#121A2D]",
   graded:
     "border border-accent/[0.28] bg-gradient-to-b from-[#1B2438] to-[#141B2C] shadow-[0_10px_28px_rgba(0,0,0,0.35)]",
+  pending: "border border-dashed border-line bg-[#121A2D]",
 };
 
 const META_CLASSES: Record<MatchCardStatus, string> = {
   editable: "text-ink-secondary font-semibold",
   locked: "text-[#EC7167] font-bold",
   graded: "text-ink-secondary font-semibold",
+  pending: "text-ink-secondary font-semibold",
 };
 
 const BADGE_CONFIG: Record<MatchCardStatus, { label: string; textClass: string; bgClass: string; icon: JSX.Element }> = {
@@ -56,6 +59,17 @@ const BADGE_CONFIG: Record<MatchCardStatus, { label: string; textClass: string; 
       </svg>
     ),
   },
+  pending: {
+    label: "À venir",
+    textClass: "text-ink-secondary",
+    bgClass: "bg-ink-secondary/[0.12]",
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 3" />
+      </svg>
+    ),
+  },
 };
 
 interface StaticScoreBoxProps {
@@ -79,11 +93,60 @@ function StaticScoreBox({ value, variant }: StaticScoreBoxProps) {
   );
 }
 
+function TeamBadge({ team, dimmed }: { team: MatchTeamInfo; dimmed?: boolean }) {
+  return team.flagUrl ? (
+    <img
+      src={team.flagUrl}
+      alt=""
+      className={`h-[46px] w-[46px] rounded-full object-cover shadow-[0_0_0_2px_rgba(255,255,255,0.12)] ${dimmed ? "grayscale-[0.4]" : ""}`}
+    />
+  ) : (
+    <div
+      className={`flex h-[46px] w-[46px] items-center justify-center rounded-full bg-elevated text-[11px] font-extrabold text-ink-secondary shadow-[0_0_0_2px_rgba(255,255,255,0.12)] ${dimmed ? "grayscale-[0.4]" : ""}`}
+    >
+      {team.fifaCode}
+    </div>
+  );
+}
+
+function TeamBlock({
+  team,
+  placeholder,
+  dimmed,
+}: {
+  team: MatchTeamInfo | null;
+  placeholder?: string | null;
+  dimmed?: boolean;
+}) {
+  if (!team) {
+    return (
+      <div className="flex flex-col items-center gap-[9px]">
+        <div className="flex h-[46px] w-[46px] items-center justify-center rounded-full border border-dashed border-line text-ink-muted">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" />
+          </svg>
+        </div>
+        <span className="text-[13px] font-semibold text-ink-muted">{placeholder ?? "?"}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-[9px]">
+      <TeamBadge team={team} dimmed={dimmed} />
+      <span className={`text-[13px] font-bold ${dimmed ? "text-ink-secondary" : "text-ink"}`}>{team.name}</span>
+    </div>
+  );
+}
+
 interface MatchPredictionCardProps {
   status: MatchCardStatus;
   metaLabel: string;
-  homeTeam: MatchTeam;
-  awayTeam: MatchTeam;
+  homeTeam: MatchTeamInfo | null;
+  awayTeam: MatchTeamInfo | null;
+  homePlaceholder?: string | null;
+  awayPlaceholder?: string | null;
   homeScore: number | string;
   awayScore: number | string;
   onHomeScoreChange?: (value: string) => void;
@@ -93,11 +156,17 @@ interface MatchPredictionCardProps {
   resultLabel?: string;
   pointsVariant?: "exact" | "correct" | "none";
   pointsLabel?: string;
+  pendingMessage?: string;
   qualifier?: {
     options: readonly [QualifierOption, QualifierOption];
     value: string | null;
     onChange: (id: string) => void;
   };
+  onSave?: () => void;
+  saveDisabled?: boolean;
+  isSaving?: boolean;
+  saveError?: string | null;
+  justSaved?: boolean;
 }
 
 export function MatchPredictionCard({
@@ -105,6 +174,8 @@ export function MatchPredictionCard({
   metaLabel,
   homeTeam,
   awayTeam,
+  homePlaceholder,
+  awayPlaceholder,
   homeScore,
   awayScore,
   onHomeScoreChange,
@@ -114,7 +185,13 @@ export function MatchPredictionCard({
   resultLabel,
   pointsVariant,
   pointsLabel,
+  pendingMessage,
   qualifier,
+  onSave,
+  saveDisabled = false,
+  isSaving = false,
+  saveError,
+  justSaved = false,
 }: MatchPredictionCardProps) {
   const badge = BADGE_CONFIG[status];
   const teamsDimmed = status === "locked";
@@ -132,15 +209,7 @@ export function MatchPredictionCard({
       </div>
 
       <div className={`grid grid-cols-[1fr_auto_1fr] items-center gap-3 ${teamsDimmed ? "opacity-[0.62]" : ""}`}>
-        <div className="flex flex-col items-center gap-[9px]">
-          <div
-            className={`h-[46px] w-[46px] rounded-full shadow-[0_0_0_2px_rgba(255,255,255,0.12)] ${teamsDimmed ? "grayscale-[0.4]" : ""}`}
-            style={{ background: homeTeam.flagGradient }}
-          />
-          <span className={`text-[13px] font-bold ${teamsDimmed ? "text-ink-secondary" : "text-ink"}`}>
-            {homeTeam.name}
-          </span>
-        </div>
+        <TeamBlock team={homeTeam} placeholder={homePlaceholder} dimmed={teamsDimmed} />
 
         <div className="flex items-center gap-2">
           {status === "editable" ? (
@@ -148,6 +217,12 @@ export function MatchPredictionCard({
               <ScoreInput value={homeScore} onChange={onHomeScoreChange} size="sm" />
               <span className="text-base font-bold text-ink-muted">–</span>
               <ScoreInput value={awayScore} onChange={onAwayScoreChange} size="sm" />
+            </>
+          ) : status === "pending" ? (
+            <>
+              <ScoreInput value="" size="sm" disabled />
+              <span className="text-base font-bold text-ink-muted">–</span>
+              <ScoreInput value="" size="sm" disabled />
             </>
           ) : (
             <>
@@ -158,29 +233,47 @@ export function MatchPredictionCard({
           )}
         </div>
 
-        <div className="flex flex-col items-center gap-[9px]">
-          <div
-            className={`h-[46px] w-[46px] rounded-full shadow-[0_0_0_2px_rgba(255,255,255,0.12)] ${teamsDimmed ? "grayscale-[0.4]" : ""}`}
-            style={{ background: awayTeam.flagGradient }}
-          />
-          <span className={`text-[13px] font-bold ${teamsDimmed ? "text-ink-secondary" : "text-ink"}`}>
-            {awayTeam.name}
-          </span>
-        </div>
+        <TeamBlock team={awayTeam} placeholder={awayPlaceholder} dimmed={teamsDimmed} />
       </div>
 
       {status === "locked" && lockedNote ? (
         <div className="num mt-3 text-center text-[11px] text-ink-secondary">{lockedNote}</div>
       ) : null}
 
+      {status === "pending" && pendingMessage ? (
+        <div className="num mt-3 text-center text-[11px] text-ink-secondary">{pendingMessage}</div>
+      ) : null}
+
       {status === "graded" && resultLabel && pointsVariant && pointsLabel ? (
         <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-3.5">
           <span className="num text-xs text-ink-secondary">{resultLabel}</span>
-          <PointsPill variant={pointsVariant} label={pointsLabel} />
+          <span className="num inline-flex items-center gap-1.5 rounded-xl bg-elevated px-[15px] py-2 text-base font-extrabold text-ink-body">
+            {pointsLabel}
+          </span>
         </div>
       ) : null}
 
-      {qualifier ? <QualifierSelector {...qualifier} /> : null}
+      {status === "editable" && qualifier ? <QualifierSelector {...qualifier} /> : null}
+
+      {status === "editable" && onSave ? (
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/[0.08] pt-3.5">
+          <div className="min-h-[16px] flex-1 text-xs">
+            {saveError ? (
+              <span className="text-danger">{saveError}</span>
+            ) : justSaved ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/[0.15] px-2.5 py-1 font-bold text-primary-light">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                Enregistré
+              </span>
+            ) : null}
+          </div>
+          <Button variant="primary" size="sm" onClick={onSave} disabled={saveDisabled || isSaving}>
+            {isSaving ? "Enregistrement…" : "Enregistrer"}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
