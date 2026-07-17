@@ -1,11 +1,6 @@
 import { useState } from "react";
-import {
-  BottomNav,
-  MatchPredictionCard,
-  PhaseTabs,
-  TotalPointsBadge,
-  type Phase,
-} from "../components/ui";
+import { AppBottomNav } from "../components/AppBottomNav";
+import { MatchPredictionCard, PhaseTabs, TotalPointsBadge, type Phase } from "../components/ui";
 import {
   FLAG_ARGENTINA,
   FLAG_BRAZIL,
@@ -130,7 +125,7 @@ export function Pronostics() {
       </main>
 
       <div className="sticky bottom-0">
-        <BottomNav active="matchs" />
+        <AppBottomNav />
       </div>
     </div>
   );

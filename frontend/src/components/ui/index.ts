@@ -1,6 +1,8 @@
 export { Badge } from "./Badge";
 export { BottomNav } from "./BottomNav";
 export { Button } from "./Button";
+export { LeaderboardRow } from "./LeaderboardRow";
+export type { LeaderboardPlayer } from "./LeaderboardRow";
 export { MatchCard } from "./MatchCard";
 export { MatchPredictionCard } from "./MatchPredictionCard";
 export { PhaseTabs } from "./PhaseTabs";
