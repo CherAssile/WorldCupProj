@@ -1,6 +1,13 @@
 export { Badge } from "./Badge";
+export { BottomNav } from "./BottomNav";
 export { Button } from "./Button";
 export { MatchCard } from "./MatchCard";
+export { MatchPredictionCard } from "./MatchPredictionCard";
+export { PhaseTabs } from "./PhaseTabs";
+export type { Phase } from "./PhaseTabs";
 export { PointsPill } from "./PointsPill";
+export { QualifierSelector } from "./QualifierSelector";
+export type { QualifierOption } from "./QualifierSelector";
 export { ScoreInput } from "./ScoreInput";
 export { TeamFlag } from "./TeamFlag";
+export { TotalPointsBadge } from "./TotalPointsBadge";
