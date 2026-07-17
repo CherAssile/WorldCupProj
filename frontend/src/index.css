@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-app font-sans text-ink antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  a {
+    @apply text-primary;
+  }
+
+  a:hover {
+    @apply text-primary-light;
+  }
+
+  input::placeholder {
+    @apply text-ink-muted;
+  }
+
+  input:focus {
+    outline: none;
+  }
+}
+
+@layer utilities {
+  .num {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+}
