@@ -7,6 +7,7 @@ class LeaderboardEntryRead(BaseModel):
     rank: int
     user_id: int
     username: str
+    is_ai: bool
     total_points: int
     exact_scores_count: int
 

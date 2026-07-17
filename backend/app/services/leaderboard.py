@@ -31,6 +31,7 @@ class LeaderboardEntry:
     rank: int
     user_id: int
     username: str
+    is_ai: bool
     total_points: int
     exact_scores_count: int
 
@@ -84,6 +85,7 @@ def get_leaderboard(db: Session, redis_client: Redis) -> list[LeaderboardEntry]:
                 rank=rank,
                 user_id=user_id,
                 username=user.username,
+                is_ai=user.is_ai,
                 total_points=score.total_points,
                 exact_scores_count=score.exact_scores_count,
             )

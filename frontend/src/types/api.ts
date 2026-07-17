@@ -160,6 +160,7 @@ export interface LeaderboardEntryRead {
   rank: number;
   user_id: number;
   username: string;
+  is_ai: boolean;
   total_points: number;
   exact_scores_count: number;
 }
