@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppTopNav } from "../components/AppTopNav";
 import { AwardCard, OddsGauge, PlayerSearchSheet, RaceGauge, type AwardPlayerOption } from "../components/ui";
 import { FLAG_ARGENTINA, FLAG_FRANCE } from "../lib/flagGradients";
 
@@ -81,56 +82,60 @@ export function Recompenses() {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-[440px] bg-app pb-8 md:max-w-[1040px]">
-      <header className="px-5 pb-1 pt-4 md:border-b md:border-white/[0.08] md:px-10 md:pb-6 md:pt-8">
-        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Récompenses</div>
-        <h1 className="mt-[3px] text-[27px] font-extrabold tracking-tight md:text-[32px]">
-          <span className="md:hidden">Pronos du tournoi</span>
-          <span className="hidden md:inline">Pronostics du tournoi</span>
-        </h1>
-        <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary md:text-sm">
-          Un seul choix par catégorie, verrouillé au coup d'envoi du premier match.
-        </p>
-      </header>
+    <div className="min-h-screen bg-app">
+      <AppTopNav points={128} />
 
-      <div className="flex flex-col gap-3.5 px-5 pb-6 pt-[18px] md:grid md:grid-cols-3 md:gap-5 md:px-10 md:pb-9 md:pt-7">
-        <AwardCard
-          icon={<BallIcon />}
-          title="Meilleur buteur"
-          subtitle="Soulier d'Or"
-          deadlineDate="11 juin"
-          selectedPlayer={findPlayer(scorer)}
-          onOpenSelector={() => openSelector("buteur", scorer)}
-        >
-          <RaceGauge
-            title="Course au Soulier d'Or"
-            rankBadge="1ER · 5 BUTS"
-            entries={[
-              { label: "Mbappé", value: 5, isLeader: true },
-              { label: "Kane", value: 4 },
-            ]}
+      <div className="mx-auto max-w-[440px] pb-8 md:max-w-[1040px]">
+        <header className="px-5 pb-1 pt-4 md:border-b md:border-white/[0.08] md:px-10 md:pb-6 md:pt-8">
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Récompenses</div>
+          <h1 className="mt-[3px] text-[27px] font-extrabold tracking-tight md:text-[32px]">
+            <span className="md:hidden">Pronos du tournoi</span>
+            <span className="hidden md:inline">Pronostics du tournoi</span>
+          </h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-ink-secondary md:text-sm">
+            Un seul choix par catégorie, verrouillé au coup d'envoi du premier match.
+          </p>
+        </header>
+
+        <div className="flex flex-col gap-3.5 px-5 pb-6 pt-[18px] md:grid md:grid-cols-3 md:gap-5 md:px-10 md:pb-9 md:pt-7">
+          <AwardCard
+            icon={<BallIcon />}
+            title="Meilleur buteur"
+            subtitle="Soulier d'Or"
+            deadlineDate="11 juin"
+            selectedPlayer={findPlayer(scorer)}
+            onOpenSelector={() => openSelector("buteur", scorer)}
+          >
+            <RaceGauge
+              title="Course au Soulier d'Or"
+              rankBadge="1ER · 5 BUTS"
+              entries={[
+                { label: "Mbappé", value: 5, isLeader: true },
+                { label: "Kane", value: 4 },
+              ]}
+            />
+          </AwardCard>
+
+          <AwardCard
+            icon={<AssistIcon />}
+            title="Meilleur passeur"
+            subtitle="Roi des passes"
+            deadlineDate="11 juin"
+            selectedPlayer={findPlayer(assist)}
+            onOpenSelector={() => openSelector("passeur", assist)}
           />
-        </AwardCard>
 
-        <AwardCard
-          icon={<AssistIcon />}
-          title="Meilleur passeur"
-          subtitle="Roi des passes"
-          deadlineDate="11 juin"
-          selectedPlayer={findPlayer(assist)}
-          onOpenSelector={() => openSelector("passeur", assist)}
-        />
-
-        <AwardCard
-          icon={<BallonDOrIcon />}
-          title="Meilleur joueur"
-          subtitle="Ballon d'Or"
-          deadlineDate="11 juin"
-          selectedPlayer={findPlayer(bestPlayer)}
-          onOpenSelector={() => openSelector("joueur", bestPlayer)}
-        >
-          <OddsGauge label="Cote actuelle" percent={72} rankBadge="2E" />
-        </AwardCard>
+          <AwardCard
+            icon={<BallonDOrIcon />}
+            title="Meilleur joueur"
+            subtitle="Ballon d'Or"
+            deadlineDate="11 juin"
+            selectedPlayer={findPlayer(bestPlayer)}
+            onOpenSelector={() => openSelector("joueur", bestPlayer)}
+          >
+            <OddsGauge label="Cote actuelle" percent={72} rankBadge="2E" />
+          </AwardCard>
+        </div>
       </div>
 
       {openCategory ? (

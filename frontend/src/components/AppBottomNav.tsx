@@ -1,24 +1,24 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { BottomNav } from "./ui";
 
-type NavId = "matchs" | "classement" | "ligues" | "profil";
+type NavId = "accueil" | "matchs" | "classement" | "profil";
 
 const ROUTES: Record<NavId, string> = {
+  accueil: "/accueil",
   matchs: "/pronostics",
   classement: "/classement",
-  ligues: "/ligues",
   profil: "/profil",
 };
 
 // Écrans pas encore implémentés : la nav les affiche mais ne navigue pas encore.
-const IMPLEMENTED_ROUTES = new Set<string>([ROUTES.matchs, ROUTES.classement]);
+const IMPLEMENTED_ROUTES = new Set<string>([ROUTES.accueil, ROUTES.matchs, ROUTES.classement]);
 
 export function AppBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
   const active =
-    (Object.keys(ROUTES) as NavId[]).find((id) => ROUTES[id] === location.pathname) ?? "matchs";
+    (Object.keys(ROUTES) as NavId[]).find((id) => ROUTES[id] === location.pathname) ?? "accueil";
 
   return (
     <BottomNav

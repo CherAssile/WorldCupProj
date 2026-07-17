@@ -1,10 +1,15 @@
 interface NavItemDef {
-  id: "matchs" | "classement" | "ligues" | "profil";
+  id: "accueil" | "matchs" | "classement" | "profil";
   label: string;
   icon: JSX.Element;
 }
 
 const NAV_ITEMS: NavItemDef[] = [
+  {
+    id: "accueil",
+    label: "Accueil",
+    icon: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
+  },
   {
     id: "matchs",
     label: "Matchs",
@@ -19,17 +24,6 @@ const NAV_ITEMS: NavItemDef[] = [
     id: "classement",
     label: "Classement",
     icon: <path d="M6 9H4a2 2 0 0 0 0 4h2M18 9h2a2 2 0 0 1 0 4h-2M6 4h12v9a6 6 0 0 1-12 0zM8 21h8M12 17v4" />,
-  },
-  {
-    id: "ligues",
-    label: "Ligues",
-    icon: (
-      <>
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
-      </>
-    ),
   },
   {
     id: "profil",
