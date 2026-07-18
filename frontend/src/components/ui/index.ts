@@ -2,6 +2,8 @@ export { AiPickCard } from "./AiPickCard";
 export { AwardCard } from "./AwardCard";
 export { Badge } from "./Badge";
 export { BottomNav } from "./BottomNav";
+export { BracketMatchCard } from "./BracketMatchCard";
+export type { BracketMatchTeam } from "./BracketMatchCard";
 export { BrandPanel } from "./BrandPanel";
 export { Button } from "./Button";
 export { CountdownTimer } from "./CountdownTimer";
