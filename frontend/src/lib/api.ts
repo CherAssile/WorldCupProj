@@ -54,9 +54,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const token = getToken();
+  const isPreEncodedBody = typeof options.body === "string";
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
-  if (options.body !== undefined) {
+  if (options.body !== undefined && !isPreEncodedBody) {
     headers.set("Content-Type", "application/json");
   }
   if (token) {
@@ -66,7 +67,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: options.body === undefined ? undefined : isPreEncodedBody ? (options.body as string) : JSON.stringify(options.body),
   });
 
   if (!response.ok) {
@@ -88,4 +89,11 @@ export const api = {
   put: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { ...options, method: "PUT", body }),
   delete: <T>(path: string, options?: RequestOptions) => request<T>(path, { ...options, method: "DELETE" }),
+  /** FastAPI OAuth2PasswordRequestForm (ex : /auth/login) attend du x-www-form-urlencoded, pas du JSON. */
+  postForm: <T>(path: string, params: Record<string, string>) =>
+    request<T>(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(params).toString(),
+    }),
 };

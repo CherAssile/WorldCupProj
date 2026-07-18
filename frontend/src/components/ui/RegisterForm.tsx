@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Button } from "./Button";
 
-interface LoginFormProps {
-  onSubmit?: (email: string, password: string) => void;
+interface RegisterFormProps {
+  onSubmit?: (email: string, username: string, password: string) => void;
   isSubmitting?: boolean;
   error?: string | null;
 }
 
-export function LoginForm({ onSubmit, isSubmitting = false, error }: LoginFormProps) {
+export function RegisterForm({ onSubmit, isSubmitting = false, error }: RegisterFormProps) {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -18,7 +19,7 @@ export function LoginForm({ onSubmit, isSubmitting = false, error }: LoginFormPr
       className="flex w-full flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit?.(email, password);
+        onSubmit?.(email, username, password);
       }}
     >
       <div>
@@ -32,6 +33,22 @@ export function LoginForm({ onSubmit, isSubmitting = false, error }: LoginFormPr
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent font-sans text-[15px] font-medium text-ink"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-[7px] block text-xs font-semibold text-ink-secondary">Pseudo</label>
+        <div className="flex items-center gap-[11px] rounded-2xl border border-line bg-[#0F1729] px-4 py-[14px]">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-ink-muted">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+          </svg>
+          <input
+            type="text"
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
             className="min-w-0 flex-1 bg-transparent font-sans text-[15px] font-medium text-ink"
           />
         </div>
@@ -79,17 +96,12 @@ export function LoginForm({ onSubmit, isSubmitting = false, error }: LoginFormPr
             </svg>
           </button>
         </div>
-        <div className="mt-2 text-right">
-          <a href="#" className="text-xs font-semibold text-ink-secondary">
-            Mot de passe oublié ?
-          </a>
-        </div>
       </div>
 
       {error ? <p className="text-center text-xs text-danger">{error}</p> : null}
 
       <Button type="submit" variant="primary" size="lg" className="mt-1 w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Connexion…" : "Se connecter"}
+        {isSubmitting ? "Création…" : "Créer mon compte"}
       </Button>
     </form>
   );

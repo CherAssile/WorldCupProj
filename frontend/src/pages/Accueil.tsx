@@ -44,7 +44,7 @@ function greeting(): string {
 
 export function Accueil() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const leaderboard = useMyLeaderboardEntry();
   const matchesQuery = useMatches();
 
@@ -74,7 +74,19 @@ export function Accueil() {
             <div className="text-[13px] text-ink-secondary">{greeting()}</div>
             <div className="text-2xl font-extrabold tracking-tight">{user?.username ?? ""}</div>
           </div>
-          <TotalPointsBadge points={points} />
+          <div className="flex items-center gap-2.5">
+            <TotalPointsBadge points={points} />
+            <button
+              onClick={logout}
+              title="Se déconnecter"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line text-ink-secondary"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5M21 12H9" />
+              </svg>
+            </button>
+          </div>
         </header>
         <header className="hidden px-8 pb-0 pt-7 md:block">
           <div className="text-sm text-ink-secondary">{greeting()}</div>

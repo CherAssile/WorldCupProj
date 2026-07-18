@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { TotalPointsBadge } from "./ui";
 
 const NAV_LINKS = [
@@ -13,9 +14,11 @@ interface AppTopNavProps {
   userInitials?: string;
 }
 
-/** Barre de navigation desktop partagée (masquée sur mobile, où AppBottomNav prend le relais). */
-export function AppTopNav({ points, userInitials = "TB" }: AppTopNavProps) {
+/** Barre de navigation desktop partagée (masquée sur mobile, où AppBottomNav prend le relais).
+ * La déconnexion ne navigue pas elle-même : ProtectedRoute redirige dès que le jeton disparaît. */
+export function AppTopNav({ points, userInitials = "–" }: AppTopNavProps) {
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <div className="hidden items-center justify-between border-b border-white/[0.08] px-8 py-5 md:flex">
@@ -45,6 +48,16 @@ export function AppTopNav({ points, userInitials = "TB" }: AppTopNavProps) {
         <div className="flex h-[38px] w-[38px] items-center justify-center rounded-full bg-[linear-gradient(135deg,#22A85A,#16824A)] text-sm font-extrabold text-[#06210F]">
           {userInitials}
         </div>
+        <button
+          onClick={logout}
+          title="Se déconnecter"
+          className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-line text-ink-secondary transition-colors hover:border-danger hover:text-danger"
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="M16 17l5-5-5-5M21 12H9" />
+          </svg>
+        </button>
       </div>
     </div>
   );

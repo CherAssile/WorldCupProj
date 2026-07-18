@@ -25,6 +25,7 @@ export { QualifierSelector } from "./QualifierSelector";
 export type { QualifierOption } from "./QualifierSelector";
 export { RaceGauge } from "./RaceGauge";
 export { RankTile } from "./RankTile";
+export { RegisterForm } from "./RegisterForm";
 export { ScoreInput } from "./ScoreInput";
 export { TotalPointsBadge } from "./TotalPointsBadge";
 export { TrainingMatchCard } from "./TrainingMatchCard";
