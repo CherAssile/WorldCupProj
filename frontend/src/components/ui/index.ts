@@ -28,4 +28,6 @@ export { RankTile } from "./RankTile";
 export { ScoreInput } from "./ScoreInput";
 export { TeamFlag } from "./TeamFlag";
 export { TotalPointsBadge } from "./TotalPointsBadge";
+export { TrainingMatchCard } from "./TrainingMatchCard";
+export type { TrainingTeamInfo } from "./TrainingMatchCard";
 export { TrainingTile } from "./TrainingTile";
