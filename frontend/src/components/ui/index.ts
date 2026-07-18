@@ -17,7 +17,7 @@ export { PhaseTabs } from "./PhaseTabs";
 export type { PhaseTabDef } from "./PhaseTabs";
 export { PlayerAvatar } from "./PlayerAvatar";
 export { PlayerSearchSheet } from "./PlayerSearchSheet";
-export type { AwardPlayerOption } from "./PlayerSearchSheet";
+export type { PlayerSearchResult, PlayerSearchTeamGroup } from "./PlayerSearchSheet";
 export { PointsPill } from "./PointsPill";
 export { QualifierSelector } from "./QualifierSelector";
 export type { QualifierOption } from "./QualifierSelector";

@@ -62,6 +62,12 @@ export interface PlayerRead {
   name: string;
   position: string | null;
   shirt_number: number | null;
+  team: TeamRead;
+}
+
+export interface TeamPlayersGroup {
+  team: TeamRead;
+  players: PlayerRead[];
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +143,7 @@ export interface AwardRead {
   category: AwardCategory;
   lock_at: string;
   actual_player_id: number | null;
+  actual_player: PlayerRead | null;
 }
 
 export interface AwardPredictionRead {
@@ -144,6 +151,7 @@ export interface AwardPredictionRead {
   user_id: number;
   award_id: number;
   predicted_player_id: number;
+  predicted_player: PlayerRead;
   created_at: string;
 }
 

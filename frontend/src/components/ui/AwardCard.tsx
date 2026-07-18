@@ -6,25 +6,49 @@ interface AwardCardSelectedPlayer {
   initials: string;
   position: string;
   teamName: string;
-  teamFlagGradient: string;
+  flagUrl: string | null;
 }
 
 interface AwardCardProps {
   icon: JSX.Element;
   title: string;
   subtitle: string;
+  /** Date seule (ex. "19 juil."), utilisée dans les messages courts. */
   deadlineDate: string;
+  /** Date + heure (ex. "19 juil. · 21:00"), utilisée dans la note "Modifiable jusqu'au". */
+  deadlineDateTime: string;
+  locked?: boolean;
   selectedPlayer?: AwardCardSelectedPlayer;
   onOpenSelector: () => void;
   children?: ReactNode;
 }
 
-/** Carte d'une catégorie de récompense : choisie (joueur + jauge) ou vide (à choisir). */
+function LockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" strokeWidth="2.2" strokeLinecap="round">
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+/** Carte d'une catégorie de récompense : choisie ou vide, modifiable ou verrouillée (lock_at dépassé). */
 export function AwardCard({
   icon,
   title,
   subtitle,
   deadlineDate,
+  deadlineDateTime,
+  locked = false,
   selectedPlayer,
   onOpenSelector,
   children,
@@ -37,62 +61,81 @@ export function AwardCard({
           : "border border-dashed border-[#2E3C57] bg-[#121A2D]"
       }`}
     >
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[13px] ${
-            selectedPlayer ? "bg-accent/[0.14] text-accent" : "bg-ink-secondary/[0.1] text-ink-secondary"
-          }`}
-        >
-          {icon}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[13px] ${
+              selectedPlayer ? "bg-accent/[0.14] text-accent" : "bg-ink-secondary/[0.1] text-ink-secondary"
+            }`}
+          >
+            {icon}
+          </div>
+          <div>
+            <div className="text-base font-bold md:text-[17px]">{title}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">{subtitle}</div>
+          </div>
         </div>
-        <div>
-          <div className="text-base font-bold md:text-[17px]">{title}</div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-secondary">{subtitle}</div>
-        </div>
+        {locked ? (
+          <span className="flex-shrink-0 rounded-full bg-danger/[0.15] p-1.5 text-[#EC7167]">
+            <LockIcon />
+          </span>
+        ) : null}
       </div>
 
       {selectedPlayer ? (
         <>
-          <button
-            onClick={onOpenSelector}
-            className="mt-3.5 flex items-center gap-3 rounded-2xl bg-[#0F1729] p-3 text-left"
-          >
-            <PlayerAvatar
-              initials={selectedPlayer.initials}
-              size={46}
-              teamFlagGradient={selectedPlayer.teamFlagGradient}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="text-base font-bold">{selectedPlayer.name}</div>
-              <div className="text-xs text-ink-secondary">
-                {selectedPlayer.teamName} · {selectedPlayer.position}
+          {locked ? (
+            <div className="mt-3.5 flex items-center gap-3 rounded-2xl bg-[#0F1729] p-3 opacity-[0.7]">
+              <PlayerAvatar initials={selectedPlayer.initials} size={46} flagUrl={selectedPlayer.flagUrl} />
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-bold">{selectedPlayer.name}</div>
+                <div className="text-xs text-ink-secondary">
+                  {selectedPlayer.teamName} · {selectedPlayer.position}
+                </div>
               </div>
             </div>
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#5E6982"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
+          ) : (
+            <button
+              onClick={onOpenSelector}
+              className="mt-3.5 flex items-center gap-3 rounded-2xl bg-[#0F1729] p-3 text-left"
             >
-              <path d="M9 6l6 6-6 6" />
-            </svg>
-          </button>
+              <PlayerAvatar initials={selectedPlayer.initials} size={46} flagUrl={selectedPlayer.flagUrl} />
+              <div className="min-w-0 flex-1">
+                <div className="text-base font-bold">{selectedPlayer.name}</div>
+                <div className="text-xs text-ink-secondary">
+                  {selectedPlayer.teamName} · {selectedPlayer.position}
+                </div>
+              </div>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5E6982" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          )}
 
           {children}
 
           <div className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-[#8A93A6]">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8A93A6" strokeWidth="2.2" strokeLinecap="round">
-              <rect x="3" y="11" width="18" height="10" rx="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            Modifiable jusqu'au {deadlineDate} · 21:00
+            {locked ? (
+              <>
+                <LockIcon />
+                Verrouillé depuis le {deadlineDate}
+              </>
+            ) : (
+              <>
+                <ClockIcon />
+                Modifiable jusqu'au {deadlineDateTime}
+              </>
+            )}
           </div>
         </>
+      ) : locked ? (
+        <div className="mt-3.5 flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
+          <span className="text-[#EC7167]">
+            <LockIcon />
+          </span>
+          <div className="text-sm font-bold text-ink-body">Aucun choix effectué</div>
+          <div className="text-xs text-ink-secondary">Délai dépassé depuis le {deadlineDate}</div>
+        </div>
       ) : (
         <>
           <button

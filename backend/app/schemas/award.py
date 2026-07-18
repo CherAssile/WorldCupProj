@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.models.enums import AwardCategory
+from app.schemas.player import PlayerRead
 
 
 class AwardRead(BaseModel):
@@ -12,3 +13,4 @@ class AwardRead(BaseModel):
     category: AwardCategory
     lock_at: datetime
     actual_player_id: int | None
+    actual_player: PlayerRead | None

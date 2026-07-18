@@ -4,17 +4,10 @@ import { AppTopNav } from "../components/AppTopNav";
 import { useAuth } from "../context/AuthContext";
 import { LeaderboardRow, type LeaderboardPlayer } from "../components/ui";
 import { useLeaderboard } from "../hooks/useLeaderboard";
+import { getInitials } from "../lib/initials";
 import type { LeaderboardEntryRead } from "../types/api";
 
 type LeaderboardFilter = "general" | "matchday";
-
-function getInitials(username: string): string {
-  const parts = username.split(/[\s_\-.]+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return username.slice(0, 2).toUpperCase();
-}
 
 function toPlayer(entry: LeaderboardEntryRead): LeaderboardPlayer {
   return {

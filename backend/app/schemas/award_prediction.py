@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.player import PlayerRead
+
 
 class AwardPredictionCreate(BaseModel):
     award_id: int
@@ -15,4 +17,5 @@ class AwardPredictionRead(BaseModel):
     user_id: int
     award_id: int
     predicted_player_id: int
+    predicted_player: PlayerRead
     created_at: datetime

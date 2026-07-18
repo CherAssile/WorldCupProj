@@ -1,60 +1,63 @@
-import { useState } from "react";
 import { PlayerAvatar } from "./PlayerAvatar";
 
-export interface AwardPlayerOption {
+export interface PlayerSearchResult {
   id: string;
   name: string;
   initials: string;
-  position: string;
-  shirtNumber: number;
-  teamName: string;
-  teamFlagGradient: string;
+  position: string | null;
+  shirtNumber: number | null;
 }
 
-interface PlayerGroup {
+export interface PlayerSearchTeamGroup {
+  teamId: number;
   teamName: string;
-  teamFlagGradient: string;
-  players: AwardPlayerOption[];
+  teamFlagUrl: string | null;
+  players: PlayerSearchResult[];
 }
 
-function groupByTeam(players: AwardPlayerOption[]): PlayerGroup[] {
-  const groups: PlayerGroup[] = [];
-  for (const player of players) {
-    const group = groups.find((g) => g.teamName === player.teamName);
-    if (group) {
-      group.players.push(player);
-    } else {
-      groups.push({ teamName: player.teamName, teamFlagGradient: player.teamFlagGradient, players: [player] });
-    }
-  }
-  return groups;
+const MIN_QUERY_LENGTH = 2;
+
+function formatPlayerMeta(player: PlayerSearchResult): string {
+  const parts = [player.position, player.shirtNumber ? `nº ${player.shirtNumber}` : null].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : "Poste inconnu";
 }
 
 interface PlayerSearchSheetProps {
   categoryLabel: string;
-  players: AwardPlayerOption[];
-  totalPlayerCount: number;
+  query: string;
+  onQueryChange: (value: string) => void;
+  groups: PlayerSearchTeamGroup[];
+  isLoading?: boolean;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedName?: string | null;
+  onSelect: (id: string, name: string) => void;
   onConfirm: () => void;
   onClose: () => void;
+  isConfirming?: boolean;
+  confirmError?: string | null;
 }
 
-/** Sélecteur de joueur pour une récompense : bottom sheet sur mobile, dialog centré sur desktop. */
+/** Sélecteur de joueur pour une récompense : bottom sheet sur mobile, dialog centré sur desktop.
+ * Purement présentationnel — la recherche (débattue, côté serveur) vit chez l'appelant. */
 export function PlayerSearchSheet({
   categoryLabel,
-  players,
-  totalPlayerCount,
+  query,
+  onQueryChange,
+  groups,
+  isLoading = false,
   selectedId,
+  selectedName,
   onSelect,
   onConfirm,
   onClose,
+  isConfirming = false,
+  confirmError,
 }: PlayerSearchSheetProps) {
-  const [query, setQuery] = useState("");
-
-  const filtered = players.filter((player) => player.name.toLowerCase().includes(query.toLowerCase()));
-  const groups = groupByTeam(filtered);
-  const selectedPlayer = players.find((player) => player.id === selectedId);
+  const hasSelection = selectedId !== null;
+  const queryTooShort = query.trim().length < MIN_QUERY_LENGTH;
+  const confirmLabel = isConfirming
+    ? "Enregistrement…"
+    : `Confirmer${hasSelection && selectedName ? ` · ${selectedName}` : ""}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-[2px] md:items-center md:bg-black/60 md:backdrop-blur-none">
@@ -95,13 +98,14 @@ export function PlayerSearchSheet({
             </svg>
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={`Rechercher parmi ${totalPlayerCount.toLocaleString("fr-FR")} joueurs…`}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Rechercher un joueur…"
               className="min-w-0 flex-1 bg-transparent font-sans text-[15px] font-semibold text-ink placeholder:text-ink-muted"
+              autoFocus
             />
             {query ? (
               <button
-                onClick={() => setQuery("")}
+                onClick={() => onQueryChange("")}
                 className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#2E3C57] text-ink-secondary"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
@@ -113,72 +117,90 @@ export function PlayerSearchSheet({
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3 md:px-4">
-          {groups.map((group) => (
-            <div key={group.teamName}>
-              <div className="flex items-center gap-2.5 px-2.5 py-2">
-                <div className="h-5 w-5 flex-shrink-0 rounded-full" style={{ background: group.teamFlagGradient }} />
-                <span className="text-xs font-bold uppercase tracking-[0.06em] text-ink-secondary">
-                  {group.teamName}
-                </span>
-                <span className="text-[11px] text-ink-muted">· {group.players.length} joueurs</span>
+          {queryTooShort ? (
+            <p className="px-2.5 py-6 text-center text-sm text-ink-secondary">
+              Tape au moins {MIN_QUERY_LENGTH} caractères pour rechercher.
+            </p>
+          ) : isLoading ? (
+            <p className="px-2.5 py-6 text-center text-sm text-ink-secondary">Recherche…</p>
+          ) : groups.length === 0 ? (
+            <p className="px-2.5 py-6 text-center text-sm text-ink-secondary">Aucun joueur trouvé.</p>
+          ) : (
+            groups.map((group) => (
+              <div key={group.teamId}>
+                <div className="flex items-center gap-2.5 px-2.5 py-2">
+                  {group.teamFlagUrl ? (
+                    <img src={group.teamFlagUrl} alt="" className="h-5 w-5 flex-shrink-0 rounded-full object-cover" />
+                  ) : (
+                    <span className="h-5 w-5 flex-shrink-0 rounded-full bg-elevated" />
+                  )}
+                  <span className="text-xs font-bold uppercase tracking-[0.06em] text-ink-secondary">
+                    {group.teamName}
+                  </span>
+                  <span className="text-[11px] text-ink-muted">
+                    · {group.players.length} joueur{group.players.length > 1 ? "s" : ""}
+                  </span>
+                </div>
+                {group.players.map((player) => {
+                  const isSelected = player.id === selectedId;
+                  return (
+                    <button
+                      key={player.id}
+                      onClick={() => onSelect(player.id, player.name)}
+                      className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left ${
+                        isSelected ? "border border-primary bg-primary/[0.13]" : ""
+                      }`}
+                    >
+                      <PlayerAvatar initials={player.initials} size={38} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[15px] font-bold">{player.name}</div>
+                        <div className="text-xs text-ink-secondary">{formatPlayerMeta(player)}</div>
+                      </div>
+                      {isSelected ? (
+                        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06210F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="h-[22px] w-[22px] flex-shrink-0 rounded-full border-2 border-[#2E3C57]" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-              {group.players.map((player) => {
-                const isSelected = player.id === selectedId;
-                return (
-                  <button
-                    key={player.id}
-                    onClick={() => onSelect(player.id)}
-                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left ${
-                      isSelected ? "border border-primary bg-primary/[0.13]" : ""
-                    }`}
-                  >
-                    <PlayerAvatar initials={player.initials} size={38} />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[15px] font-bold">{player.name}</div>
-                      <div className="text-xs text-ink-secondary">
-                        {player.position} · nº {player.shirtNumber}
-                      </div>
-                    </div>
-                    {isSelected ? (
-                      <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06210F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
-                      </div>
-                    ) : (
-                      <div className="h-[22px] w-[22px] flex-shrink-0 rounded-full border-2 border-[#2E3C57]" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
         <div className="border-t border-white/[0.08] px-5 pb-[22px] pt-3 md:hidden">
+          {confirmError ? <p className="mb-2.5 text-center text-xs text-danger">{confirmError}</p> : null}
           <button
-            disabled={!selectedPlayer}
+            disabled={!hasSelection || isConfirming}
             onClick={onConfirm}
             className="h-[52px] w-full rounded-2xl bg-primary font-sans text-base font-bold text-[#06210F] shadow-[0_8px_22px_rgba(34,168,90,0.32)] disabled:opacity-50"
           >
-            Confirmer{selectedPlayer ? ` · ${selectedPlayer.name}` : ""}
+            {confirmLabel}
           </button>
         </div>
 
-        <div className="hidden gap-3 border-t border-white/[0.08] px-6 pb-[22px] pt-4 md:flex">
-          <button
-            onClick={onClose}
-            className="h-[52px] flex-shrink-0 rounded-[15px] border border-line px-6 font-sans text-[15px] font-semibold text-ink-body"
-          >
-            Annuler
-          </button>
-          <button
-            disabled={!selectedPlayer}
-            onClick={onConfirm}
-            className="h-[52px] flex-1 rounded-[15px] bg-primary font-sans text-base font-bold text-[#06210F] shadow-[0_8px_22px_rgba(34,168,90,0.32)] disabled:opacity-50"
-          >
-            Confirmer{selectedPlayer ? ` · ${selectedPlayer.name}` : ""}
-          </button>
+        <div className="hidden flex-col gap-2.5 border-t border-white/[0.08] px-6 pb-[22px] pt-4 md:flex">
+          {confirmError ? <p className="text-center text-xs text-danger">{confirmError}</p> : null}
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="h-[52px] flex-shrink-0 rounded-[15px] border border-line px-6 font-sans text-[15px] font-semibold text-ink-body"
+            >
+              Annuler
+            </button>
+            <button
+              disabled={!hasSelection || isConfirming}
+              onClick={onConfirm}
+              className="h-[52px] flex-1 rounded-[15px] bg-primary font-sans text-base font-bold text-[#06210F] shadow-[0_8px_22px_rgba(34,168,90,0.32)] disabled:opacity-50"
+            >
+              {confirmLabel}
+            </button>
+          </div>
         </div>
       </div>
     </div>

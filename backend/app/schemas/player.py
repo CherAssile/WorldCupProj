@@ -10,6 +10,7 @@ class PlayerRead(BaseModel):
     name: str
     position: str | None
     shirt_number: int | None
+    team: TeamRead
 
 
 class TeamPlayersGroup(BaseModel):
