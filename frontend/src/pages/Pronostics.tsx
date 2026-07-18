@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { AppTopNav } from "../components/AppTopNav";
 import { PredictionMatchCard } from "../components/PredictionMatchCard";
-import { PhaseTabs, TotalPointsBadge, type PhaseTabDef } from "../components/ui";
+import { ErrorState, LoadingState, PhaseTabs, TotalPointsBadge, type PhaseTabDef } from "../components/ui";
+import { useAuth } from "../context/AuthContext";
 import { useMatches } from "../hooks/useMatches";
+import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { usePredictions } from "../hooks/usePredictions";
+import { getInitials } from "../lib/initials";
 import type { MatchPhase } from "../types/api";
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
@@ -17,32 +20,14 @@ const PHASE_LABELS: Record<MatchPhase, string> = {
   final: "Finale",
 };
 
-function LoadingState() {
-  return (
-    <div className="flex flex-1 items-center justify-center px-5 py-16 text-sm text-ink-secondary">
-      Chargement des matchs…
-    </div>
-  );
-}
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-16 text-center">
-      <p className="text-sm text-danger">{message}</p>
-      <button
-        onClick={onRetry}
-        className="rounded-2xl border border-line px-5 py-2.5 text-sm font-bold text-ink-body"
-      >
-        Réessayer
-      </button>
-    </div>
-  );
-}
-
 export function Pronostics() {
+  const { user } = useAuth();
+  const leaderboard = useMyLeaderboardEntry();
   const matchesQuery = useMatches();
   const predictionsQuery = usePredictions();
   const [activePhase, setActivePhase] = useState<MatchPhase | null>(null);
+
+  const points = leaderboard.entry?.total_points ?? 0;
 
   const groups = matchesQuery.data ?? [];
 
@@ -63,7 +48,7 @@ export function Pronostics() {
 
   return (
     <div className="flex min-h-screen flex-col bg-app">
-      <AppTopNav points={128} />
+      <AppTopNav points={points} userInitials={user ? getInitials(user.username) : undefined} />
 
       <div className="mx-auto flex w-full max-w-[440px] flex-1 flex-col">
         <header className="flex items-start justify-between px-5 pb-1 pt-4">
@@ -71,10 +56,10 @@ export function Pronostics() {
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Coupe du monde 2026</div>
             <h1 className="mt-[3px] text-[30px] font-extrabold tracking-tight">Pronostics</h1>
           </div>
-          <TotalPointsBadge points={128} />
+          <TotalPointsBadge points={points} />
         </header>
 
-        {matchesQuery.isLoading ? <LoadingState /> : null}
+        {matchesQuery.isLoading ? <LoadingState message="Chargement des matchs…" /> : null}
 
         {matchesQuery.isError ? (
           <ErrorState

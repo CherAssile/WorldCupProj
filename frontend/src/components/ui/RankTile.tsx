@@ -1,7 +1,7 @@
 interface RankTileProps {
   rank: number;
   totalPlayers: number;
-  deltaLabel: string;
+  deltaLabel?: string;
 }
 
 export function RankTile({ rank, totalPlayers, deltaLabel }: RankTileProps) {
@@ -17,7 +17,9 @@ export function RankTile({ rank, totalPlayers, deltaLabel }: RankTileProps) {
         {rank}
         <span className="text-[15px] font-bold text-ink-muted md:text-base"> / {totalPlayers}</span>
       </div>
-      <div className="mt-1 text-xs font-semibold text-primary-light md:text-[13px]">▲ {deltaLabel}</div>
+      {deltaLabel ? (
+        <div className="mt-1 text-xs font-semibold text-primary-light md:text-[13px]">▲ {deltaLabel}</div>
+      ) : null}
     </div>
   );
 }

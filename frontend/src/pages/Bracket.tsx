@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { AppTopNav } from "../components/AppTopNav";
-import { BracketMatchCard, PhaseTabs, type BracketMatchTeam, type PhaseTabDef } from "../components/ui";
+import { BracketMatchCard, ErrorState, LoadingState, PhaseTabs, type BracketMatchTeam, type PhaseTabDef } from "../components/ui";
+import { useAuth } from "../context/AuthContext";
 import { useMatches } from "../hooks/useMatches";
+import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { resolvePlaceholderLabel, sortBracketMatches } from "../lib/bracket";
+import { getInitials } from "../lib/initials";
 import type { MatchPhase, MatchPhaseGroup, MatchRead } from "../types/api";
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
@@ -50,26 +53,9 @@ function BracketMatchNode({ match }: { match: MatchRead }) {
   );
 }
 
-function LoadingState() {
-  return (
-    <div className="flex flex-1 items-center justify-center px-5 py-16 text-sm text-ink-secondary">
-      Chargement du bracket…
-    </div>
-  );
-}
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-16 text-center">
-      <p className="text-sm text-danger">{message}</p>
-      <button onClick={onRetry} className="rounded-2xl border border-line px-5 py-2.5 text-sm font-bold text-ink-body">
-        Réessayer
-      </button>
-    </div>
-  );
-}
-
 export function Bracket() {
+  const { user } = useAuth();
+  const leaderboard = useMyLeaderboardEntry();
   const matchesQuery = useMatches();
   const [activePhase, setActivePhase] = useState<MatchPhase | null>(null);
 
@@ -90,7 +76,7 @@ export function Bracket() {
 
   return (
     <div className="flex min-h-screen flex-col bg-app">
-      <AppTopNav points={128} />
+      <AppTopNav points={leaderboard.entry?.total_points ?? 0} userInitials={user ? getInitials(user.username) : undefined} />
 
       <div className="mx-auto flex w-full max-w-[440px] flex-1 flex-col md:max-w-none">
         <header className="px-5 pb-1 pt-4 md:border-b md:border-white/[0.08] md:px-10 md:pb-6 md:pt-8">
@@ -98,7 +84,7 @@ export function Bracket() {
           <h1 className="mt-[3px] text-[27px] font-extrabold tracking-tight md:text-[32px]">Phases finales</h1>
         </header>
 
-        {matchesQuery.isLoading ? <LoadingState /> : null}
+        {matchesQuery.isLoading ? <LoadingState message="Chargement du bracket…" /> : null}
 
         {matchesQuery.isError ? (
           <ErrorState

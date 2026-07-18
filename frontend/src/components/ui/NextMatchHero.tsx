@@ -3,7 +3,24 @@ import { CountdownTimer } from "./CountdownTimer";
 
 interface NextMatchHeroTeam {
   name: string;
-  flagGradient: string;
+  fifaCode: string;
+  flagUrl: string | null;
+}
+
+function TeamBadge({ team, className = "" }: { team: NextMatchHeroTeam; className?: string }) {
+  return team.flagUrl ? (
+    <img
+      src={team.flagUrl}
+      alt=""
+      className={`flex-shrink-0 rounded-full object-cover shadow-[0_0_0_2px_rgba(255,255,255,0.12)] ${className}`}
+    />
+  ) : (
+    <div
+      className={`flex flex-shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-extrabold text-ink-secondary shadow-[0_0_0_2px_rgba(255,255,255,0.12)] ${className}`}
+    >
+      {team.fifaCode}
+    </div>
+  );
 }
 
 interface NextMatchHeroProps {
@@ -35,18 +52,12 @@ export function NextMatchHero({
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2.5 md:gap-6">
         <div className="flex flex-col items-center gap-2.5 md:flex-row md:justify-end md:gap-3.5">
-          <div
-            className="order-1 h-[50px] w-[50px] rounded-full shadow-[0_0_0_2px_rgba(255,255,255,0.12)] md:order-2 md:h-[58px] md:w-[58px]"
-            style={{ background: homeTeam.flagGradient }}
-          />
+          <TeamBadge team={homeTeam} className="order-1 h-[50px] w-[50px] md:order-2 md:h-[58px] md:w-[58px]" />
           <span className="order-2 text-[13px] font-bold md:order-1 md:text-xl">{homeTeam.name}</span>
         </div>
         <span className="text-[15px] font-extrabold text-ink-muted md:text-lg">VS</span>
         <div className="flex flex-col items-center gap-2.5 md:flex-row md:gap-3.5">
-          <div
-            className="h-[50px] w-[50px] rounded-full shadow-[0_0_0_2px_rgba(255,255,255,0.12)] md:h-[58px] md:w-[58px]"
-            style={{ background: awayTeam.flagGradient }}
-          />
+          <TeamBadge team={awayTeam} className="h-[50px] w-[50px] md:h-[58px] md:w-[58px]" />
           <span className="text-[13px] font-bold md:text-xl">{awayTeam.name}</span>
         </div>
       </div>

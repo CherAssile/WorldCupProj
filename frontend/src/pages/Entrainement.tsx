@@ -2,27 +2,13 @@ import { useState } from "react";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { AppTopNav } from "../components/AppTopNav";
 import { TrainingMatchSlot } from "../components/TrainingMatchSlot";
-import { Button } from "../components/ui";
+import { Button, ErrorState, LoadingState } from "../components/ui";
+import { useAuth } from "../context/AuthContext";
 import { useCreateTrainingSession } from "../hooks/useCreateTrainingSession";
+import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { useTrainingSession } from "../hooks/useTrainingSession";
 import { useTrainingSessionResults } from "../hooks/useTrainingSessionResults";
-
-function LoadingState({ message }: { message: string }) {
-  return (
-    <div className="flex flex-1 items-center justify-center px-5 py-16 text-sm text-ink-secondary">{message}</div>
-  );
-}
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-16 text-center">
-      <p className="text-sm text-danger">{message}</p>
-      <button onClick={onRetry} className="rounded-2xl border border-line px-5 py-2.5 text-sm font-bold text-ink-body">
-        Réessayer
-      </button>
-    </div>
-  );
-}
+import { getInitials } from "../lib/initials";
 
 function StartScreen({
   onStart,
@@ -57,6 +43,8 @@ function StartScreen({
 }
 
 export function Entrainement() {
+  const { user } = useAuth();
+  const leaderboard = useMyLeaderboardEntry();
   const [sessionId, setSessionId] = useState<number | null>(null);
   const createSession = useCreateTrainingSession();
   const sessionQuery = useTrainingSession(sessionId);
@@ -77,7 +65,7 @@ export function Entrainement() {
 
   return (
     <div className="flex min-h-screen flex-col bg-app">
-      <AppTopNav points={128} />
+      <AppTopNav points={leaderboard.entry?.total_points ?? 0} userInitials={user ? getInitials(user.username) : undefined} />
 
       <div className="mx-auto flex w-full max-w-[440px] flex-1 flex-col md:max-w-[720px]">
         <header className="px-5 pb-1 pt-4 md:px-10 md:pb-6 md:pt-8">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AppBottomNav } from "../components/AppBottomNav";
 import { AppTopNav } from "../components/AppTopNav";
 import { useAuth } from "../context/AuthContext";
-import { LeaderboardRow, type LeaderboardPlayer } from "../components/ui";
+import { ErrorState, LeaderboardRow, LoadingState, type LeaderboardPlayer } from "../components/ui";
 import { useLeaderboard } from "../hooks/useLeaderboard";
 import { getInitials } from "../lib/initials";
 import type { LeaderboardEntryRead } from "../types/api";
@@ -20,25 +20,6 @@ function toPlayer(entry: LeaderboardEntryRead): LeaderboardPlayer {
   };
 }
 
-function LoadingState() {
-  return (
-    <div className="flex flex-1 items-center justify-center px-5 py-16 text-sm text-ink-secondary">
-      Chargement du classement…
-    </div>
-  );
-}
-
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 py-16 text-center">
-      <p className="text-sm text-danger">{message}</p>
-      <button onClick={onRetry} className="rounded-2xl border border-line px-5 py-2.5 text-sm font-bold text-ink-body">
-        Réessayer
-      </button>
-    </div>
-  );
-}
-
 export function Classement() {
   const [filter, setFilter] = useState<LeaderboardFilter>("general");
   const { user } = useAuth();
@@ -51,7 +32,7 @@ export function Classement() {
 
   return (
     <div className="flex min-h-screen flex-col bg-app">
-      <AppTopNav points={128} />
+      <AppTopNav points={youPlayer?.points ?? 0} userInitials={user ? getInitials(user.username) : undefined} />
 
       <div className="mx-auto flex w-full max-w-[440px] flex-1 flex-col md:max-w-[860px]">
         <header className="px-5 pb-3.5 pt-4 md:flex md:items-end md:justify-between md:border-b md:border-white/[0.08] md:px-10 md:pb-[26px] md:pt-[34px]">
@@ -84,7 +65,7 @@ export function Classement() {
           </div>
         </header>
 
-        {leaderboardQuery.isLoading ? <LoadingState /> : null}
+        {leaderboardQuery.isLoading ? <LoadingState message="Chargement du classement…" /> : null}
 
         {leaderboardQuery.isError ? (
           <ErrorState
