@@ -19,6 +19,15 @@ class MatchStatus(str, Enum):
     FINISHED = "finished"
 
 
+class PredictedWinnerSide(str, Enum):
+    """Qualifié pronostiqué par côté, pour un match dont les équipes ne sont pas encore
+    connues (placeholders) : on désigne « le vainqueur du match 101 » par sa position
+    (domicile/extérieur), résolue contre winner_team_id au moment du scoring."""
+
+    HOME = "home"
+    AWAY = "away"
+
+
 class AwardCategory(str, Enum):
     TOP_SCORER = "top_scorer"
     TOP_ASSIST = "top_assist"

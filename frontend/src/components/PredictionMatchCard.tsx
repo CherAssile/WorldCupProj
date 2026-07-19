@@ -16,6 +16,24 @@ function toTeamInfo(team: MatchRead["home_team"]): MatchTeamInfo | null {
   return { name: team.name, fifaCode: team.fifa_code, flagUrl: team.flag_url };
 }
 
+/**
+ * Valeur du sélecteur de qualifié pour un pronostic existant. Deux formes côté API :
+ * par équipe (id numérique en chaîne) ou par côté ("home"/"away", pronostic posé quand
+ * les équipes étaient des placeholders). Si les équipes sont connues depuis, le côté
+ * est projeté sur l'équipe correspondante — le pronostic est conservé, l'écran affiche
+ * les vraies équipes.
+ */
+function initialQualifier(prediction: PredictionRead | undefined, match: MatchRead): string | null {
+  if (!prediction) return null;
+  if (prediction.predicted_winner_team_id != null) return String(prediction.predicted_winner_team_id);
+  if (prediction.predicted_winner_side != null) {
+    const teamsKnown = match.home_team !== null && match.away_team !== null;
+    if (!teamsKnown) return prediction.predicted_winner_side;
+    return prediction.predicted_winner_side === "home" ? String(match.home_team!.id) : String(match.away_team!.id);
+  }
+  return null;
+}
+
 interface PredictionMatchCardProps {
   match: MatchRead;
   existingPrediction: PredictionRead | undefined;
@@ -30,9 +48,7 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
   const [awayScore, setAwayScore] = useState(
     existingPrediction ? String(existingPrediction.predicted_away_score) : ""
   );
-  const [qualifier, setQualifier] = useState<string | null>(
-    existingPrediction?.predicted_winner_team_id != null ? String(existingPrediction.predicted_winner_team_id) : null
-  );
+  const [qualifier, setQualifier] = useState<string | null>(() => initialQualifier(existingPrediction, match));
   const [justSaved, setJustSaved] = useState(false);
 
   // Resynchronise les champs si la prédiction existante arrive/évolue après le premier rendu
@@ -41,15 +57,14 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
     if (existingPrediction) {
       setHomeScore(String(existingPrediction.predicted_home_score));
       setAwayScore(String(existingPrediction.predicted_away_score));
-      setQualifier(
-        existingPrediction.predicted_winner_team_id != null ? String(existingPrediction.predicted_winner_team_id) : null
-      );
+      setQualifier(initialQualifier(existingPrediction, match));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existingPrediction?.id]);
 
   const homeTeam = toTeamInfo(match.home_team);
   const awayTeam = toTeamInfo(match.away_team);
+  const teamsKnown = homeTeam !== null && awayTeam !== null;
   const isKnockout = match.phase !== "group";
   const status = deriveMatchStatus(match);
 
@@ -66,13 +81,15 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
 
   function handleSave() {
     if (!scoresValid || !qualifierValid) return;
+    const qualifierIsSide = qualifier === "home" || qualifier === "away";
     savePrediction.mutate(
       {
         existingId: existingPrediction?.id ?? null,
         matchId: match.id,
         predictedHomeScore: homeNum,
         predictedAwayScore: awayNum,
-        predictedWinnerTeamId: isKnockout && qualifier ? Number(qualifier) : null,
+        predictedWinnerTeamId: isKnockout && qualifier && !qualifierIsSide ? Number(qualifier) : null,
+        predictedWinnerSide: isKnockout && qualifierIsSide ? (qualifier as "home" | "away") : null,
       },
       {
         onSuccess: () => {
@@ -83,12 +100,29 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
     );
   }
 
+  // Équipes connues : choix par équipe (id). Placeholders : choix par côté, libellés
+  // résolus côté serveur (« Vainqueur du match 101 »).
   const qualifierOptions: readonly [QualifierOption, QualifierOption] | undefined =
-    status === "editable" && isKnockout && homeTeam && awayTeam
-      ? [
-          { id: String(match.home_team!.id), label: homeTeam.name, fifaCode: homeTeam.fifaCode, flagUrl: homeTeam.flagUrl },
-          { id: String(match.away_team!.id), label: awayTeam.name, fifaCode: awayTeam.fifaCode, flagUrl: awayTeam.flagUrl },
-        ]
+    status === "editable" && isKnockout
+      ? teamsKnown
+        ? [
+            { id: String(match.home_team!.id), label: homeTeam!.name, fifaCode: homeTeam!.fifaCode, flagUrl: homeTeam!.flagUrl },
+            { id: String(match.away_team!.id), label: awayTeam!.name, fifaCode: awayTeam!.fifaCode, flagUrl: awayTeam!.flagUrl },
+          ]
+        : [
+            {
+              id: "home",
+              label: match.home_team?.name ?? match.home_placeholder_label ?? "Équipe à domicile",
+              fifaCode: match.home_team?.fifa_code,
+              flagUrl: match.home_team?.flag_url,
+            },
+            {
+              id: "away",
+              label: match.away_team?.name ?? match.away_placeholder_label ?? "Équipe à l'extérieur",
+              fifaCode: match.away_team?.fifa_code,
+              flagUrl: match.away_team?.flag_url,
+            },
+          ]
       : undefined;
 
   const metaLabel =
@@ -108,14 +142,13 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
       metaLabel={metaLabel}
       homeTeam={homeTeam}
       awayTeam={awayTeam}
-      homePlaceholder={match.home_placeholder}
-      awayPlaceholder={match.away_placeholder}
+      homePlaceholder={match.home_placeholder_label ?? match.home_placeholder}
+      awayPlaceholder={match.away_placeholder_label ?? match.away_placeholder}
       homeScore={status === "editable" ? homeScore : (existingPrediction?.predicted_home_score ?? "–")}
       awayScore={status === "editable" ? awayScore : (existingPrediction?.predicted_away_score ?? "–")}
       onHomeScoreChange={setHomeScore}
       onAwayScoreChange={setAwayScore}
       lockedNote={lockedNote}
-      pendingMessage="Les équipes de ce match ne sont pas encore connues : pronostic impossible."
       qualifier={
         qualifierOptions
           ? { options: qualifierOptions, value: qualifier, onChange: setQualifier }

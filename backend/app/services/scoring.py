@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.models.award import Award
 from app.models.award_prediction import AwardPrediction
-from app.models.enums import MatchPhase
+from app.models.enums import MatchPhase, PredictedWinnerSide
 from app.models.historical_match import HistoricalMatch
 from app.models.match import Match
 from app.models.prediction import Prediction
@@ -77,12 +77,31 @@ def _score_points(prediction: Prediction, match: Match) -> int:
 
 
 def _qualifier_points(prediction: Prediction, match: Match) -> int:
-    """Uniquement en phase finale (le qualifié n'existe pas en poule)."""
+    """Uniquement en phase finale (le qualifié n'existe pas en poule). Deux formes :
+    par équipe (predicted_winner_team_id), ou par côté (predicted_winner_side) pour un
+    pronostic posé quand les équipes étaient encore des placeholders — le côté se résout
+    ici, au calcul, une fois le match joué et ses équipes connues."""
     if match.phase == MatchPhase.GROUP:
         return 0
-    if prediction.predicted_winner_team_id is None or match.winner_team_id is None:
+    if match.winner_team_id is None:
         return 0
-    return CORRECT_QUALIFIER_POINTS if prediction.predicted_winner_team_id == match.winner_team_id else 0
+
+    if prediction.predicted_winner_team_id is not None:
+        return CORRECT_QUALIFIER_POINTS if prediction.predicted_winner_team_id == match.winner_team_id else 0
+
+    if prediction.predicted_winner_side is not None:
+        predicted_team_id = (
+            match.home_team_id
+            if prediction.predicted_winner_side == PredictedWinnerSide.HOME
+            else match.away_team_id
+        )
+        return (
+            CORRECT_QUALIFIER_POINTS
+            if predicted_team_id is not None and predicted_team_id == match.winner_team_id
+            else 0
+        )
+
+    return 0
 
 
 def score_match_prediction(prediction: Prediction, match: Match) -> int:

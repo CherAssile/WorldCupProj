@@ -2,9 +2,9 @@ import { deriveMatchStatus } from "./matchStatus";
 import type { MatchPhaseGroup, MatchRead } from "../types/api";
 
 /**
- * Premier match à venir et non verrouillé, tous phases confondues (groupes inclus).
- * Les matchs aux équipes encore inconnues (placeholders) sont exclus : impossible à
- * pronostiquer de toute façon (même logique que deriveMatchStatus === "pending").
+ * Premier match à venir et non verrouillé, toutes phases confondues (groupes inclus).
+ * Les matchs aux équipes encore inconnues (placeholders) comptent aussi : ils sont
+ * pronostiquables jusqu'au coup d'envoi (qualifié par côté).
  */
 export function findNextMatch(groups: MatchPhaseGroup[]): MatchRead | null {
   const upcoming = groups

@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from app.models.enums import MatchPhase, MatchStatus
 from app.schemas.team import TeamRead
+from app.services.placeholders import placeholder_label
 
 
 class MatchRead(BaseModel):
@@ -25,6 +26,18 @@ class MatchRead(BaseModel):
     penalties_home_score: int | None
     penalties_away_score: int | None
     winner_team: TeamRead | None
+
+    # Libellés résolus côté serveur (« Vainqueur du match 101 ») : le frontend ne décode
+    # jamais les codes bruts W/L lui-même.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def home_placeholder_label(self) -> str | None:
+        return placeholder_label(self.home_placeholder)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def away_placeholder_label(self) -> str | None:
+        return placeholder_label(self.away_placeholder)
 
 
 class MatchPhaseGroup(BaseModel):

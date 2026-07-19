@@ -1,20 +1,16 @@
 import type { MatchRead } from "../types/api";
 
-export type PredictionCardStatus = "editable" | "locked" | "pending";
+export type PredictionCardStatus = "editable" | "locked";
 
 /**
- * Dérive l'état d'affichage d'un match à pronostiquer.
- * "pending" prime toujours sur le verrouillage : un match aux équipes encore
- * inconnues (placeholders) ne peut de toute façon pas être pronostiqué.
- * Le verrouillage lui-même est une vérification client, indicative seulement —
- * le serveur reste seul juge au moment de l'enregistrement (409 si dépassé).
+ * Dérive l'état d'affichage d'un match à pronostiquer. Seul le coup d'envoi verrouille :
+ * un match aux équipes encore inconnues (placeholders) reste pronostiquable — le qualifié
+ * s'y exprime par le côté (predicted_winner_side). Cette vérification client est
+ * indicative seulement — le serveur reste seul juge à l'enregistrement (409 si dépassé).
  */
 export function deriveMatchStatus(
-  match: Pick<MatchRead, "home_team" | "away_team" | "kickoff_at">,
+  match: Pick<MatchRead, "kickoff_at">,
   now: Date = new Date()
 ): PredictionCardStatus {
-  if (!match.home_team || !match.away_team) {
-    return "pending";
-  }
   return new Date(match.kickoff_at).getTime() <= now.getTime() ? "locked" : "editable";
 }

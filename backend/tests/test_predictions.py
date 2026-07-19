@@ -184,8 +184,7 @@ def test_predicted_winner_must_be_one_of_match_teams(client: TestClient, db_sess
     assert response.status_code == 422
 
 
-def test_prediction_impossible_when_teams_unresolved(client: TestClient, db_session: Session) -> None:
-    """Une finale existe avant que ses deux participants ne soient connus : pronostic impossible."""
+def _create_placeholder_final(db_session: Session, kickoff_at: datetime) -> Match:
     match = Match(
         home_team_id=None,
         away_team_id=None,
@@ -193,15 +192,137 @@ def test_prediction_impossible_when_teams_unresolved(client: TestClient, db_sess
         away_placeholder="W102",
         phase=MatchPhase.FINAL,
         status=MatchStatus.SCHEDULED,
-        kickoff_at=FUTURE_KICKOFF,
+        kickoff_at=kickoff_at,
     )
     db_session.add(match)
     db_session.flush()
+    return match
+
+
+def test_full_prediction_on_unresolved_final_accepted(client: TestClient, db_session: Session) -> None:
+    """« Le vainqueur de la demi-finale 1 gagne la finale 2-1 » est un pronostic parfaitement
+    défini : un match à placeholders est pronostiquable, le qualifié s'exprime par le côté."""
+    match = _create_placeholder_final(db_session, FUTURE_KICKOFF)
 
     headers = _register_and_login(client, "joueur7@example.com")
     response = client.post(
         "/predictions",
+        json={
+            "match_id": match.id,
+            "predicted_home_score": 2,
+            "predicted_away_score": 1,
+            "predicted_winner_side": "home",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["predicted_winner_side"] == "home"
+    assert body["predicted_winner_team_id"] is None
+
+
+def test_qualifier_still_required_on_placeholder_knockout(client: TestClient, db_session: Session) -> None:
+    """Le qualifié reste obligatoire en phase finale, placeholders ou pas."""
+    match = _create_placeholder_final(db_session, FUTURE_KICKOFF)
+
+    headers = _register_and_login(client, "joueur7b@example.com")
+    response = client.post(
+        "/predictions",
         json={"match_id": match.id, "predicted_home_score": 1, "predicted_away_score": 1},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_both_qualifier_forms_together_rejected(client: TestClient, db_session: Session) -> None:
+    """predicted_winner_team_id et predicted_winner_side sont mutuellement exclusifs."""
+    headers = _register_and_login(client, "joueur7c@example.com")
+    home, away, _ = _create_teams(db_session, "XOR")
+    match = _create_match(db_session, home, away, MatchPhase.SEMI_FINAL, FUTURE_KICKOFF)
+
+    response = client.post(
+        "/predictions",
+        json={
+            "match_id": match.id,
+            "predicted_home_score": 1,
+            "predicted_away_score": 0,
+            "predicted_winner_team_id": home.id,
+            "predicted_winner_side": "home",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_side_rejected_when_teams_are_known(client: TestClient, db_session: Session) -> None:
+    """Équipes connues → le qualifié se désigne par équipe, pas par côté."""
+    headers = _register_and_login(client, "joueur7d@example.com")
+    home, away, _ = _create_teams(db_session, "SDK")
+    match = _create_match(db_session, home, away, MatchPhase.SEMI_FINAL, FUTURE_KICKOFF)
+
+    response = client.post(
+        "/predictions",
+        json={
+            "match_id": match.id,
+            "predicted_home_score": 1,
+            "predicted_away_score": 0,
+            "predicted_winner_side": "home",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_team_id_rejected_when_teams_unresolved(client: TestClient, db_session: Session) -> None:
+    """Équipes inconnues → impossible de désigner une équipe précise comme qualifiée."""
+    match = _create_placeholder_final(db_session, FUTURE_KICKOFF)
+    headers = _register_and_login(client, "joueur7e@example.com")
+    _, _, other = _create_teams(db_session, "TIU")
+
+    response = client.post(
+        "/predictions",
+        json={
+            "match_id": match.id,
+            "predicted_home_score": 1,
+            "predicted_away_score": 0,
+            "predicted_winner_team_id": other.id,
+        },
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_side_rejected_on_group_match(client: TestClient, db_session: Session) -> None:
+    headers = _register_and_login(client, "joueur7f@example.com")
+    home, away, _ = _create_teams(db_session, "SGR")
+    match = _create_match(db_session, home, away, MatchPhase.GROUP, FUTURE_KICKOFF)
+
+    response = client.post(
+        "/predictions",
+        json={
+            "match_id": match.id,
+            "predicted_home_score": 1,
+            "predicted_away_score": 1,
+            "predicted_winner_side": "away",
+        },
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_kickoff_lock_still_applies_on_placeholder_match(client: TestClient, db_session: Session) -> None:
+    """Le verrouillage au coup d'envoi reste strictement inchangé, placeholders compris."""
+    match = _create_placeholder_final(db_session, PAST_KICKOFF)
+
+    headers = _register_and_login(client, "joueur7g@example.com")
+    response = client.post(
+        "/predictions",
+        json={
+            "match_id": match.id,
+            "predicted_home_score": 2,
+            "predicted_away_score": 1,
+            "predicted_winner_side": "home",
+        },
         headers=headers,
     )
     assert response.status_code == 409

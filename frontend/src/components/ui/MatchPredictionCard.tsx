@@ -2,7 +2,7 @@ import { Button } from "./Button";
 import { QualifierSelector, type QualifierOption } from "./QualifierSelector";
 import { ScoreInput } from "./ScoreInput";
 
-type MatchCardStatus = "editable" | "locked" | "graded" | "pending";
+type MatchCardStatus = "editable" | "locked" | "graded";
 
 export interface MatchTeamInfo {
   name: string;
@@ -16,14 +16,12 @@ const CONTAINER_CLASSES: Record<MatchCardStatus, string> = {
   locked: "border border-white/[0.05] bg-[#121A2D]",
   graded:
     "border border-accent/[0.28] bg-gradient-to-b from-[#1B2438] to-[#141B2C] shadow-[0_10px_28px_rgba(0,0,0,0.35)]",
-  pending: "border border-dashed border-line bg-[#121A2D]",
 };
 
 const META_CLASSES: Record<MatchCardStatus, string> = {
   editable: "text-ink-secondary font-semibold",
   locked: "text-[#EC7167] font-bold",
   graded: "text-ink-secondary font-semibold",
-  pending: "text-ink-secondary font-semibold",
 };
 
 const BADGE_CONFIG: Record<MatchCardStatus, { label: string; textClass: string; bgClass: string; icon: JSX.Element }> = {
@@ -56,17 +54,6 @@ const BADGE_CONFIG: Record<MatchCardStatus, { label: string; textClass: string; 
     icon: (
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 6 9 17l-5-5" />
-      </svg>
-    ),
-  },
-  pending: {
-    label: "À venir",
-    textClass: "text-ink-secondary",
-    bgClass: "bg-ink-secondary/[0.12]",
-    icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 3" />
       </svg>
     ),
   },
@@ -156,7 +143,6 @@ interface MatchPredictionCardProps {
   resultLabel?: string;
   pointsVariant?: "exact" | "correct" | "none";
   pointsLabel?: string;
-  pendingMessage?: string;
   qualifier?: {
     options: readonly [QualifierOption, QualifierOption];
     value: string | null;
@@ -185,7 +171,6 @@ export function MatchPredictionCard({
   resultLabel,
   pointsVariant,
   pointsLabel,
-  pendingMessage,
   qualifier,
   onSave,
   saveDisabled = false,
@@ -218,12 +203,6 @@ export function MatchPredictionCard({
               <span className="text-base font-bold text-ink-muted">–</span>
               <ScoreInput value={awayScore} onChange={onAwayScoreChange} size="sm" />
             </>
-          ) : status === "pending" ? (
-            <>
-              <ScoreInput value="" size="sm" disabled />
-              <span className="text-base font-bold text-ink-muted">–</span>
-              <ScoreInput value="" size="sm" disabled />
-            </>
           ) : (
             <>
               <StaticScoreBox value={homeScore} variant={status === "locked" ? "locked" : isExactScore ? "graded-exact" : "graded-neutral"} />
@@ -238,10 +217,6 @@ export function MatchPredictionCard({
 
       {status === "locked" && lockedNote ? (
         <div className="num mt-3 text-center text-[11px] text-ink-secondary">{lockedNote}</div>
-      ) : null}
-
-      {status === "pending" && pendingMessage ? (
-        <div className="num mt-3 text-center text-[11px] text-ink-secondary">{pendingMessage}</div>
       ) : null}
 
       {status === "graded" && resultLabel && pointsVariant && pointsLabel ? (

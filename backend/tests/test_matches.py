@@ -46,3 +46,27 @@ def test_matches_grouped_by_phase_with_data(client: TestClient, db_session: Sess
 
     created = next(m for m in quarter_final_matches if m["home_team"]["name"] == "Testland Alpha")
     assert created["away_team"]["name"] == "Testland Beta"
+
+
+def test_placeholder_labels_resolved_server_side(client: TestClient, db_session: Session) -> None:
+    """GET /matches expose le libellé lisible de chaque placeholder (« Vainqueur du match
+    101 ») : le frontend n'a jamais à décoder les codes bruts W/L lui-même."""
+    match = Match(
+        home_team_id=None,
+        away_team_id=None,
+        home_placeholder="W101",
+        away_placeholder="L102",
+        phase=MatchPhase.FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc),
+    )
+    db_session.add(match)
+    db_session.commit()
+
+    response = client.get("/matches")
+    assert response.status_code == 200
+
+    group_by_phase = {group["phase"]: group["matches"] for group in response.json()}
+    created = next(m for m in group_by_phase["final"] if m["home_placeholder"] == "W101" and m["id"] == match.id)
+    assert created["home_placeholder_label"] == "Vainqueur du match 101"
+    assert created["away_placeholder_label"] == "Perdant du match 102"

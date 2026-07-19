@@ -74,6 +74,8 @@ export interface TeamPlayersGroup {
 // Matchs (compétitif)
 // ---------------------------------------------------------------------------
 
+export type PredictedWinnerSide = "home" | "away";
+
 export interface MatchRead {
   id: number;
   num: number | null;
@@ -84,6 +86,9 @@ export interface MatchRead {
   away_team: TeamRead | null;
   home_placeholder: string | null;
   away_placeholder: string | null;
+  /** Libellés résolus côté serveur (« Vainqueur du match 101 ») — jamais de décodage W/L côté client. */
+  home_placeholder_label: string | null;
+  away_placeholder_label: string | null;
   home_score: number | null;
   away_score: number | null;
   extra_time_home_score: number | null;
@@ -117,6 +122,7 @@ export interface PredictionRead {
   predicted_home_score: number;
   predicted_away_score: number;
   predicted_winner_team_id: number | null;
+  predicted_winner_side: PredictedWinnerSide | null;
   created_at: string;
   updated_at: string;
 }
@@ -126,12 +132,14 @@ export interface PredictionCreate {
   predicted_home_score: number;
   predicted_away_score: number;
   predicted_winner_team_id?: number | null;
+  predicted_winner_side?: PredictedWinnerSide | null;
 }
 
 export interface PredictionUpdate {
   predicted_home_score: number;
   predicted_away_score: number;
   predicted_winner_team_id?: number | null;
+  predicted_winner_side?: PredictedWinnerSide | null;
 }
 
 // ---------------------------------------------------------------------------

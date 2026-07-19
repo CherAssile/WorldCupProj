@@ -7,7 +7,9 @@ interface SavePredictionInput {
   matchId: number;
   predictedHomeScore: number;
   predictedAwayScore: number;
+  /** Mutuellement exclusifs (règle serveur) : par équipe si connues, par côté sinon. */
   predictedWinnerTeamId: number | null;
+  predictedWinnerSide: "home" | "away" | null;
 }
 
 /**
@@ -25,6 +27,7 @@ export function useSavePrediction() {
           predicted_home_score: input.predictedHomeScore,
           predicted_away_score: input.predictedAwayScore,
           predicted_winner_team_id: input.predictedWinnerTeamId,
+          predicted_winner_side: input.predictedWinnerSide,
         };
         return api.put<PredictionRead>(`/predictions/${input.existingId}`, body);
       }
@@ -34,6 +37,7 @@ export function useSavePrediction() {
         predicted_home_score: input.predictedHomeScore,
         predicted_away_score: input.predictedAwayScore,
         predicted_winner_team_id: input.predictedWinnerTeamId,
+        predicted_winner_side: input.predictedWinnerSide,
       };
       return api.post<PredictionRead>("/predictions", body);
     },

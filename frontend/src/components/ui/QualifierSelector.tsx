@@ -1,8 +1,9 @@
 export interface QualifierOption {
   id: string;
   label: string;
-  fifaCode: string;
-  flagUrl: string | null;
+  /** Absents pour une option « par côté » (équipe encore inconnue, ex. « Vainqueur du match 101 »). */
+  fifaCode?: string;
+  flagUrl?: string | null;
 }
 
 interface QualifierSelectorProps {
@@ -11,7 +12,8 @@ interface QualifierSelectorProps {
   onChange: (id: string) => void;
 }
 
-/** Choix du vainqueur en cas d'égalité, requis en élimination directe (predicted_winner_team_id). */
+/** Choix du qualifié, requis en élimination directe. Par équipe (predicted_winner_team_id)
+ * quand les équipes sont connues, par côté (predicted_winner_side) sinon. */
 export function QualifierSelector({ options, value, onChange }: QualifierSelectorProps) {
   return (
     <div className="mt-[18px] border-t border-white/[0.08] pt-4">
@@ -38,12 +40,16 @@ export function QualifierSelector({ options, value, onChange }: QualifierSelecto
             >
               {option.flagUrl ? (
                 <img src={option.flagUrl} alt="" className="h-[22px] w-[22px] rounded-full object-cover" />
-              ) : (
+              ) : option.fifaCode ? (
                 <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-elevated text-[8px] font-extrabold text-ink-secondary">
                   {option.fifaCode}
                 </span>
+              ) : (
+                <span className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border border-dashed border-line text-[10px] font-extrabold text-ink-muted">
+                  ?
+                </span>
               )}
-              {option.label}
+              <span className="min-w-0 truncate">{option.label}</span>
             </button>
           );
         })}

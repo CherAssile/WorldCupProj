@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.award import Award
 from app.models.award_prediction import AwardPrediction
-from app.models.enums import AwardCategory, MatchPhase, MatchStatus
+from app.models.enums import AwardCategory, MatchPhase, MatchStatus, PredictedWinnerSide
 from app.models.match import Match
 from app.models.prediction import Prediction
 from app.models.score import Score
@@ -14,13 +14,35 @@ from app.models.user import User
 from app.services import scoring
 
 
-def _match(phase: MatchPhase, home_score: int, away_score: int, winner_team_id: int | None = None) -> Match:
-    return Match(phase=phase, home_score=home_score, away_score=away_score, winner_team_id=winner_team_id)
+def _match(
+    phase: MatchPhase,
+    home_score: int,
+    away_score: int,
+    winner_team_id: int | None = None,
+    home_team_id: int | None = None,
+    away_team_id: int | None = None,
+) -> Match:
+    return Match(
+        phase=phase,
+        home_score=home_score,
+        away_score=away_score,
+        winner_team_id=winner_team_id,
+        home_team_id=home_team_id,
+        away_team_id=away_team_id,
+    )
 
 
-def _prediction(home: int, away: int, predicted_winner_team_id: int | None = None) -> Prediction:
+def _prediction(
+    home: int,
+    away: int,
+    predicted_winner_team_id: int | None = None,
+    predicted_winner_side: PredictedWinnerSide | None = None,
+) -> Prediction:
     return Prediction(
-        predicted_home_score=home, predicted_away_score=away, predicted_winner_team_id=predicted_winner_team_id
+        predicted_home_score=home,
+        predicted_away_score=away,
+        predicted_winner_team_id=predicted_winner_team_id,
+        predicted_winner_side=predicted_winner_side,
     )
 
 
@@ -63,6 +85,41 @@ def test_exact_score_and_correct_qualifier_are_cumulative() -> None:
     match = _match(MatchPhase.ROUND_OF_32, 1, 1, winner_team_id=39)  # Round of 32, non doublé
     prediction = _prediction(1, 1, predicted_winner_team_id=39)
     assert scoring.score_match_prediction(prediction, match) == 5
+
+
+def test_correct_side_home_scores_qualifier_points() -> None:
+    """Qualifié par côté (pronostic posé quand les équipes étaient des placeholders) :
+    HOME est correct si l'équipe à domicile, une fois résolue, est bien la qualifiée."""
+    match = _match(MatchPhase.ROUND_OF_16, 1, 1, winner_team_id=1, home_team_id=1, away_team_id=2)
+    prediction = _prediction(2, 0, predicted_winner_side=PredictedWinnerSide.HOME)  # issue fausse
+    assert scoring.score_match_prediction(prediction, match) == 2
+
+
+def test_correct_side_away_cumulates_with_exact_score() -> None:
+    match = _match(MatchPhase.ROUND_OF_16, 0, 0, winner_team_id=2, home_team_id=1, away_team_id=2)
+    prediction = _prediction(0, 0, predicted_winner_side=PredictedWinnerSide.AWAY)
+    assert scoring.score_match_prediction(prediction, match) == 3 + 2
+
+
+def test_wrong_side_drops_only_the_qualifier_points() -> None:
+    match = _match(MatchPhase.ROUND_OF_16, 2, 1, winner_team_id=1, home_team_id=1, away_team_id=2)
+    prediction = _prediction(3, 1, predicted_winner_side=PredictedWinnerSide.AWAY)  # même issue, mauvais côté
+    assert scoring.score_match_prediction(prediction, match) == 1
+
+
+def test_correct_side_is_doubled_from_quarter_finals() -> None:
+    """Le barème du qualifié par côté est identique à celui par équipe : 2 pts, cumulables,
+    doublés à partir des quarts — ici sur la finale : (3 + 2) x 2 = 10."""
+    match = _match(MatchPhase.FINAL, 2, 1, winner_team_id=1, home_team_id=1, away_team_id=2)
+    prediction = _prediction(2, 1, predicted_winner_side=PredictedWinnerSide.HOME)
+    assert scoring.score_match_prediction(prediction, match) == (3 + 2) * 2
+
+
+def test_side_scores_0_while_teams_still_unresolved() -> None:
+    """Tant que le match n'a pas de vainqueur (ni d'équipes résolues), le côté ne rapporte rien."""
+    match = _match(MatchPhase.FINAL, None, None, winner_team_id=None, home_team_id=None, away_team_id=None)
+    prediction = _prediction(2, 1, predicted_winner_side=PredictedWinnerSide.HOME)
+    assert scoring.score_match_prediction(prediction, match) == 0
 
 
 def test_quarter_final_and_beyond_doubles_the_match_total() -> None:

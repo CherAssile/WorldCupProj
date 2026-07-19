@@ -101,19 +101,19 @@ export function Accueil() {
               message="Impossible de charger le prochain match. Vérifie ta connexion et réessaie."
               onRetry={() => matchesQuery.refetch()}
             />
-          ) : nextMatch && nextMatch.home_team && nextMatch.away_team ? (
+          ) : nextMatch ? (
             <NextMatchHero
               groupLabel={`Prochain match · ${PHASE_LABELS[nextMatch.phase]}`}
               kickoffLabel={KICKOFF_FORMATTER.format(new Date(nextMatch.kickoff_at))}
               homeTeam={{
-                name: nextMatch.home_team.name,
-                fifaCode: nextMatch.home_team.fifa_code,
-                flagUrl: nextMatch.home_team.flag_url,
+                name: nextMatch.home_team?.name ?? nextMatch.home_placeholder_label ?? "À déterminer",
+                fifaCode: nextMatch.home_team?.fifa_code ?? "?",
+                flagUrl: nextMatch.home_team?.flag_url ?? null,
               }}
               awayTeam={{
-                name: nextMatch.away_team.name,
-                fifaCode: nextMatch.away_team.fifa_code,
-                flagUrl: nextMatch.away_team.flag_url,
+                name: nextMatch.away_team?.name ?? nextMatch.away_placeholder_label ?? "À déterminer",
+                fifaCode: nextMatch.away_team?.fifa_code ?? "?",
+                flagUrl: nextMatch.away_team?.flag_url ?? null,
               }}
               countdownTarget={new Date(nextMatch.kickoff_at)}
               onPredict={() => navigate("/pronostics")}

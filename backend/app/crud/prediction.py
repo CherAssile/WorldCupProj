@@ -26,6 +26,7 @@ def create(db: Session, user_id: int, match_id: int, prediction_in: PredictionCr
         predicted_home_score=prediction_in.predicted_home_score,
         predicted_away_score=prediction_in.predicted_away_score,
         predicted_winner_team_id=prediction_in.predicted_winner_team_id,
+        predicted_winner_side=prediction_in.predicted_winner_side,
     )
     db.add(prediction)
     db.commit()
@@ -37,6 +38,7 @@ def update(db: Session, prediction: Prediction, prediction_in: PredictionUpdate)
     prediction.predicted_home_score = prediction_in.predicted_home_score
     prediction.predicted_away_score = prediction_in.predicted_away_score
     prediction.predicted_winner_team_id = prediction_in.predicted_winner_team_id
+    prediction.predicted_winner_side = prediction_in.predicted_winner_side
     db.commit()
     db.refresh(prediction)
     return prediction

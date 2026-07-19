@@ -5,7 +5,7 @@ import { BracketMatchCard, ErrorState, LoadingState, PhaseTabs, type BracketMatc
 import { useAuth } from "../context/AuthContext";
 import { useMatches } from "../hooks/useMatches";
 import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
-import { resolvePlaceholderLabel, sortBracketMatches } from "../lib/bracket";
+import { sortBracketMatches } from "../lib/bracket";
 import { getInitials } from "../lib/initials";
 import type { MatchPhase, MatchPhaseGroup, MatchRead } from "../types/api";
 
@@ -43,8 +43,8 @@ function BracketMatchNode({ match }: { match: MatchRead }) {
       metaLabel={metaLabel(match)}
       homeTeam={toBracketTeam(match.home_team)}
       awayTeam={toBracketTeam(match.away_team)}
-      homePlaceholderLabel={resolvePlaceholderLabel(match.home_placeholder)}
-      awayPlaceholderLabel={resolvePlaceholderLabel(match.away_placeholder)}
+      homePlaceholderLabel={match.home_placeholder_label}
+      awayPlaceholderLabel={match.away_placeholder_label}
       homeScore={match.home_score}
       awayScore={match.away_score}
       isFinished={match.status === "finished"}
