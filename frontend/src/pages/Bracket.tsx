@@ -43,8 +43,8 @@ function BracketMatchNode({ match }: { match: MatchRead }) {
       metaLabel={metaLabel(match)}
       homeTeam={toBracketTeam(match.home_team)}
       awayTeam={toBracketTeam(match.away_team)}
-      homePlaceholderLabel={match.home_placeholder_label}
-      awayPlaceholderLabel={match.away_placeholder_label}
+      homePlaceholderLabel={match.home_placeholder_label_short}
+      awayPlaceholderLabel={match.away_placeholder_label_short}
       homeScore={match.home_score}
       awayScore={match.away_score}
       isFinished={match.status === "finished"}

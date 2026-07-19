@@ -90,9 +90,13 @@ export interface MatchRead {
   away_team: TeamRead | null;
   home_placeholder: string | null;
   away_placeholder: string | null;
-  /** Libellés résolus côté serveur (« Vainqueur du match 101 ») — jamais de décodage W/L côté client. */
+  /** Libellés résolus côté serveur, d'un niveau (« France ou Espagne » si la demie est
+   * connue, sinon « Vainqueur du match 101 ») — jamais de décodage W/L côté client.
+   * Version courte (« FRA/ESP ») pour les emplacements contraints en largeur. */
   home_placeholder_label: string | null;
   away_placeholder_label: string | null;
+  home_placeholder_label_short: string | null;
+  away_placeholder_label_short: string | null;
   home_score: number | null;
   away_score: number | null;
   extra_time_home_score: number | null;

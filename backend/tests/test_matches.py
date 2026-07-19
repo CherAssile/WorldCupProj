@@ -48,25 +48,116 @@ def test_matches_grouped_by_phase_with_data(client: TestClient, db_session: Sess
     assert created["away_team"]["name"] == "Testland Beta"
 
 
-def test_placeholder_labels_resolved_server_side(client: TestClient, db_session: Session) -> None:
-    """GET /matches expose le libellé lisible de chaque placeholder (« Vainqueur du match
-    101 ») : le frontend n'a jamais à décoder les codes bruts W/L lui-même."""
-    match = Match(
-        home_team_id=None,
-        away_team_id=None,
-        home_placeholder="W101",
-        away_placeholder="L102",
+def _match_from_response(response_json: list, phase: str, match_id: int) -> dict:
+    group_by_phase = {group["phase"]: group["matches"] for group in response_json}
+    return next(m for m in group_by_phase[phase] if m["id"] == match_id)
+
+
+def test_placeholder_label_resolved_one_level_when_referenced_teams_known(
+    client: TestClient, db_session: Session
+) -> None:
+    """La demie référencée est connue → le libellé remonte d'un niveau : « France ou
+    Espagne » (et « FRA/ESP » en version courte) plutôt que « Vainqueur du match 90101 »."""
+    france = Team(name="Zztest France", fifa_code="ZFR")
+    espagne = Team(name="Zztest Espagne", fifa_code="ZES")
+    db_session.add_all([france, espagne])
+    db_session.flush()
+
+    semi = Match(
+        num=90101,
+        home_team_id=france.id,
+        away_team_id=espagne.id,
+        phase=MatchPhase.SEMI_FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 14, 19, 0, tzinfo=timezone.utc),
+    )
+    final = Match(
+        num=90201,
+        home_placeholder="W90101",
         phase=MatchPhase.FINAL,
         status=MatchStatus.SCHEDULED,
         kickoff_at=datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc),
     )
-    db_session.add(match)
+    db_session.add_all([semi, final])
     db_session.commit()
 
-    response = client.get("/matches")
-    assert response.status_code == 200
+    created = _match_from_response(client.get("/matches").json(), "final", final.id)
+    assert created["home_placeholder_label"] == "Zztest France ou Zztest Espagne"
+    assert created["home_placeholder_label_short"] == "ZFR/ZES"
 
-    group_by_phase = {group["phase"]: group["matches"] for group in response.json()}
-    created = next(m for m in group_by_phase["final"] if m["home_placeholder"] == "W101" and m["id"] == match.id)
-    assert created["home_placeholder_label"] == "Vainqueur du match 101"
-    assert created["away_placeholder_label"] == "Perdant du match 102"
+
+def test_loser_placeholder_resolved_one_level(client: TestClient, db_session: Session) -> None:
+    """Un placeholder de type L résolu : « Perdant France-Espagne » / « Perdant FRA/ESP »."""
+    france = Team(name="Zztest Loser France", fifa_code="ZLF")
+    espagne = Team(name="Zztest Loser Espagne", fifa_code="ZLE")
+    db_session.add_all([france, espagne])
+    db_session.flush()
+
+    semi = Match(
+        num=90111,
+        home_team_id=france.id,
+        away_team_id=espagne.id,
+        phase=MatchPhase.SEMI_FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 14, 19, 0, tzinfo=timezone.utc),
+    )
+    third = Match(
+        num=90211,
+        home_placeholder="L90111",
+        phase=MatchPhase.THIRD_PLACE,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 18, 19, 0, tzinfo=timezone.utc),
+    )
+    db_session.add_all([semi, third])
+    db_session.commit()
+
+    created = _match_from_response(client.get("/matches").json(), "third_place", third.id)
+    assert created["home_placeholder_label"] == "Perdant Zztest Loser France-Zztest Loser Espagne"
+    assert created["home_placeholder_label_short"] == "Perdant ZLF/ZLE"
+
+
+def test_placeholder_label_falls_back_when_referenced_match_absent(
+    client: TestClient, db_session: Session
+) -> None:
+    """Aucun match ne porte le num référencé → repli sur le libellé par numéro."""
+    final = Match(
+        num=90301,
+        home_placeholder="W98765",
+        phase=MatchPhase.FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc),
+    )
+    db_session.add(final)
+    db_session.commit()
+
+    created = _match_from_response(client.get("/matches").json(), "final", final.id)
+    assert created["home_placeholder_label"] == "Vainqueur du match 98765"
+    assert created["home_placeholder_label_short"] == "V. 98765"
+
+
+def test_placeholder_label_falls_back_when_referenced_teams_unknown(
+    client: TestClient, db_session: Session
+) -> None:
+    """Le match référencé existe mais ses équipes ne sont pas encore connues (chaîne de
+    placeholders non résolue) → repli, pas de remontée d'un niveau."""
+    unresolved_semi = Match(
+        num=90401,
+        home_placeholder="W90501",
+        away_placeholder="W90502",
+        phase=MatchPhase.SEMI_FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 14, 19, 0, tzinfo=timezone.utc),
+    )
+    final = Match(
+        num=90402,
+        home_placeholder="W90401",
+        phase=MatchPhase.FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc),
+    )
+    db_session.add_all([unresolved_semi, final])
+    db_session.commit()
+
+    created = _match_from_response(client.get("/matches").json(), "final", final.id)
+    assert created["home_placeholder_label"] == "Vainqueur du match 90401"
+    assert created["home_placeholder_label_short"] == "V. 90401"

@@ -8,18 +8,35 @@ from app.models.enums import MatchPhase
 from app.models.match import Match
 from app.schemas.ai_prediction import AiPredictionRead
 from app.schemas.lineup import LineupPlayerRead, MatchLineupsRead, TeamLineupRead
-from app.schemas.match import MatchPhaseGroup
+from app.schemas.match import MatchPhaseGroup, MatchRead
 from app.schemas.team import TeamRead
+from app.services.placeholders import resolve_placeholder
 
 router = APIRouter(prefix="/matches", tags=["matchs"])
+
+
+def _to_match_read(match: Match, matches_by_num: dict[int, Match]) -> MatchRead:
+    """Sérialise un match en résolvant ses placeholders d'un niveau (« France ou Espagne »)
+    contre l'ensemble des matchs, indexés par num."""
+    read = MatchRead.model_validate(match)
+    home = resolve_placeholder(match.home_placeholder, matches_by_num)
+    away = resolve_placeholder(match.away_placeholder, matches_by_num)
+    read.home_placeholder_label = home.long
+    read.home_placeholder_label_short = home.short
+    read.away_placeholder_label = away.long
+    read.away_placeholder_label_short = away.short
+    return read
 
 
 @router.get("", response_model=list[MatchPhaseGroup])
 def list_matches_by_phase(db: Session = Depends(get_db)) -> list[MatchPhaseGroup]:
     """Liste les matchs du tournoi, groupés par phase (ordre du tournoi)."""
-    matches_by_phase: dict[MatchPhase, list[Match]] = {phase: [] for phase in MatchPhase}
-    for match in crud.match.list_all(db):
-        matches_by_phase[match.phase].append(match)
+    matches = crud.match.list_all(db)
+    matches_by_num = {match.num: match for match in matches if match.num is not None}
+
+    matches_by_phase: dict[MatchPhase, list[MatchRead]] = {phase: [] for phase in MatchPhase}
+    for match in matches:
+        matches_by_phase[match.phase].append(_to_match_read(match, matches_by_num))
 
     return [MatchPhaseGroup(phase=phase, matches=matches_by_phase[phase]) for phase in MatchPhase]
 
