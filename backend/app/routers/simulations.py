@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_db
-from app.deps import require_admin
+from app.deps import get_ai_client, require_admin
 from app.models.user import User
 from app.schemas.simulation import SimulationCreate, SimulationRunDetailRead, SimulationRunRead
+from app.services.ai_client import AIClient
 from app.services.simulation import AIServiceUnavailable, run_alternate_simulation, run_realistic_simulation
 
 router = APIRouter(prefix="/simulations", tags=["simulation"])
@@ -16,6 +17,7 @@ def create_simulation(
     payload: SimulationCreate,
     db: Session = Depends(get_db),
     admin: User = Depends(require_admin),
+    ai_client: AIClient = Depends(get_ai_client),
 ) -> SimulationRunDetailRead:
     """Lance une simulation complète du tournoi (bac à sable admin). Réservé aux
     administrateurs -- n'affecte jamais matches/predictions/scores/classement.
@@ -24,7 +26,7 @@ def create_simulation(
     matchs déjà joués compris (cf. services/simulation.py)."""
     run_simulation = run_realistic_simulation if payload.mode == "realiste" else run_alternate_simulation
     try:
-        run = run_simulation(db, created_by_user_id=admin.id, label=payload.label)
+        run = run_simulation(db, created_by_user_id=admin.id, label=payload.label, ai_client=ai_client)
     except AIServiceUnavailable as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 

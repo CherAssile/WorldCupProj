@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token
+from app.deps import get_ai_client
+from app.main import app
 from app.models.ai_prediction import AiPrediction
 from app.models.enums import MatchPhase, MatchStatus
 from app.models.match import Match
@@ -140,23 +142,28 @@ def test_build_round_of_32_pairs_never_pairs_same_group_and_uses_every_team_once
 
 
 class _FakeAIClient:
-    """Prédit un score déterministe et varié (jamais le vrai service IA). Journalise
-    chaque appel pour permettre aux tests de vérifier ce qui a été réellement demandé."""
+    """Prédit un score déterministe et varié (jamais le vrai service IA), par NOMS
+    d'équipes. Journalise chaque appel (clé = noms) pour que les tests vérifient ce qui a
+    été réellement demandé."""
 
     def __init__(self) -> None:
         self.calls = 0
-        self.predictions: dict[tuple[int, int], tuple[int, int]] = {}
+        self.predictions: dict[tuple[str, str], tuple[int, int]] = {}
 
-    def predict_match(self, home_team_id: int, away_team_id: int, match_id: int | None = None) -> MatchPrediction:
+    def predict_match(
+        self, home_team: str, away_team: str, reference_date=None, match_id: int | None = None
+    ) -> MatchPrediction:
         self.calls += 1
-        home_score = (home_team_id * 3 + away_team_id) % 5
-        away_score = (home_team_id + away_team_id * 2) % 5
-        self.predictions[(home_team_id, away_team_id)] = (home_score, away_score)
+        home_score = (len(home_team) * 3 + len(away_team)) % 5
+        away_score = (len(home_team) + len(away_team) * 2) % 5
+        self.predictions[(home_team, away_team)] = (home_score, away_score)
         return MatchPrediction(predicted_home_score=home_score, predicted_away_score=away_score)
 
 
 class _AlwaysUnavailableAIClient:
-    def predict_match(self, home_team_id: int, away_team_id: int, match_id: int | None = None) -> None:
+    def predict_match(
+        self, home_team: str, away_team: str, reference_date=None, match_id: int | None = None
+    ) -> None:
         return None
 
 
@@ -165,6 +172,9 @@ def _clear_real_matches(db_session: Session) -> None:
     run_realistic_simulation le traiterait aussi, en plus du tournoi synthétique du test,
     faussant les décomptes. Purge le calendrier réel, sans effet hors de la transaction de
     test (même schéma que test_ai_predictions.py::_clear_matches)."""
+    # predictions ET ai_predictions référencent matches (un vrai utilisateur a pu
+    # pronostiquer) : purger les deux avant les matchs.
+    db_session.query(Prediction).delete()
     db_session.query(AiPrediction).delete()
     db_session.query(Match).delete()
     db_session.flush()
@@ -302,7 +312,7 @@ def test_run_realistic_simulation_simulates_unplayed_match_via_ai(db_session: Se
         .one()
     )
     assert row.is_frozen_real_result is False
-    expected_home, expected_away = fake.predictions[(t1.id, t2.id)]
+    expected_home, expected_away = fake.predictions[(t1.name, t2.name)]
     assert (row.simulated_home_score, row.simulated_away_score) == (expected_home, expected_away)
 
 
@@ -523,6 +533,8 @@ def test_post_simulations_creates_full_tournament_for_admin(client: TestClient, 
     admin = _create_admin(db_session, "g")
     _build_full_tournament(db_session)
     token = create_access_token(subject=str(admin.id))
+    # Faux client IA injecté : la simulation via HTTP ne doit pas dépendre du vrai dataset.
+    app.dependency_overrides[get_ai_client] = lambda: _FakeAIClient()
 
     response = client.post(
         "/simulations",
@@ -552,6 +564,7 @@ def test_post_simulations_alternate_mode_creates_full_tournament_for_admin(
     admin = _create_admin(db_session, "h")
     _build_full_tournament(db_session)
     token = create_access_token(subject=str(admin.id))
+    app.dependency_overrides[get_ai_client] = lambda: _FakeAIClient()
 
     response = client.post(
         "/simulations",

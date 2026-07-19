@@ -116,6 +116,8 @@ export interface AiPredictionRead {
   match_id: number;
   predicted_home_score: number;
   predicted_away_score: number;
+  /** true = prédiction de repli neutre (équipe non reconnue par le modèle IA). */
+  is_fallback: boolean;
   created_at: string;
 }
 

@@ -92,6 +92,7 @@ export function SingleMatchPrediction({ match, existingPrediction, matchesByNum 
               awayTeamName={match.away_team?.name ?? match.away_placeholder_label_short ?? "Extérieur"}
               homeScore={aiPrediction.data.predicted_home_score}
               awayScore={aiPrediction.data.predicted_away_score}
+              isFallback={aiPrediction.data.is_fallback}
             />
           ) : null}
         </aside>

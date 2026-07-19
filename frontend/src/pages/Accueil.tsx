@@ -61,6 +61,7 @@ export function Accueil() {
         awayTeamName={nextMatch.away_team.name}
         homeScore={aiPredictionQuery.data.predicted_home_score}
         awayScore={aiPredictionQuery.data.predicted_away_score}
+        isFallback={aiPredictionQuery.data.is_fallback}
       />
     ) : null;
 

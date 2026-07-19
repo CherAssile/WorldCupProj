@@ -10,11 +10,11 @@ import logging
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.ai_prediction import AiPrediction
 from app.models.match import Match
-from app.services.ai_client import AIClient
+from app.services.ai_client import NEUTRAL_FALLBACK_PREDICTION, AIClient, UnknownTeamError
 
 logger = logging.getLogger(__name__)
 
@@ -26,14 +26,20 @@ class GenerationResult:
     removed_stale: int = 0
     skipped_unresolved_teams: int = 0
     skipped_ai_unavailable: int = 0
+    fallback_predictions: int = 0
 
 
 def _upcoming_matches(db: Session) -> list[Match]:
-    """Matchs pas encore joués (résultat inconnu) dont les deux équipes sont connues."""
-    stmt = select(Match).where(
-        Match.home_score.is_(None),
-        Match.home_team_id.is_not(None),
-        Match.away_team_id.is_not(None),
+    """Matchs pas encore joués (résultat inconnu) dont les deux équipes sont connues,
+    équipes préchargées (leurs noms partent au service IA)."""
+    stmt = (
+        select(Match)
+        .options(joinedload(Match.home_team), joinedload(Match.away_team))
+        .where(
+            Match.home_score.is_(None),
+            Match.home_team_id.is_not(None),
+            Match.away_team_id.is_not(None),
+        )
     )
     return list(db.execute(stmt).scalars())
 
@@ -72,9 +78,19 @@ def generate_ai_predictions(db: Session, ai_client: AIClient | None = None) -> G
     )
 
     for match in matches:
-        prediction = ai_client.predict_match(
-            home_team_id=match.home_team_id, away_team_id=match.away_team_id, match_id=match.id
-        )
+        # Match à venir : pas de date de référence (tout l'historique est légitime).
+        try:
+            prediction = ai_client.predict_match(
+                home_team=match.home_team.name, away_team=match.away_team.name, match_id=match.id
+            )
+            is_fallback = False
+        except UnknownTeamError:
+            # Équipe absente du dataset (ex. Curaçao) : l'IA concourt au classement et doit
+            # TOUJOURS produire une prédiction (cf. CLAUDE.md) — repli neutre marqué.
+            prediction = NEUTRAL_FALLBACK_PREDICTION
+            is_fallback = True
+            result.fallback_predictions += 1
+
         if prediction is None:
             result.skipped_ai_unavailable += 1
             continue
@@ -86,12 +102,14 @@ def generate_ai_predictions(db: Session, ai_client: AIClient | None = None) -> G
                     match_id=match.id,
                     predicted_home_score=prediction.predicted_home_score,
                     predicted_away_score=prediction.predicted_away_score,
+                    is_fallback=is_fallback,
                 )
             )
             result.created += 1
         else:
             row.predicted_home_score = prediction.predicted_home_score
             row.predicted_away_score = prediction.predicted_away_score
+            row.is_fallback = is_fallback
             result.updated += 1
 
     stale_rows = db.execute(

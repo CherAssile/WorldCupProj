@@ -23,4 +23,5 @@ def regenerate_ai_predictions(
         removed_stale=result.removed_stale,
         skipped_unresolved_teams=result.skipped_unresolved_teams,
         skipped_ai_unavailable=result.skipped_ai_unavailable,
+        fallback_predictions=result.fallback_predictions,
     )

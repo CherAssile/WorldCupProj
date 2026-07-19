@@ -7,8 +7,15 @@ from app.core.security import decode_access_token
 from app.crud import user as user_crud
 from app.database import get_db
 from app.models.user import User
+from app.services.ai_client import AIClient
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+def get_ai_client() -> AIClient:
+    """Fournit le client du service IA. Injecté par dépendance pour que les tests puissent
+    le remplacer par un faux client (sans dépendre du vrai dataset du service)."""
+    return AIClient()
 
 
 def get_current_user(

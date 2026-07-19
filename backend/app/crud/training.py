@@ -1,7 +1,9 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.config import settings
 from app.models.historical_match import HistoricalMatch
+from app.models.team import Team
 from app.models.training_prediction import TrainingPrediction
 from app.models.training_session import TrainingSession
 from app.models.training_session_match import TrainingSessionMatch
@@ -13,12 +15,24 @@ def create_session(db: Session, user_id: int, match_count: int) -> TrainingSessi
     Le tirage est figé dès la création (table dédiée, distincte des pronostics) : c'est ce
     qui permet de renvoyer les matchs à l'utilisateur avant qu'il n'ait pronostiqué, sans
     jamais exposer leur vrai score.
+
+    Exclut les matchs impliquant une équipe absente du dataset du service IA
+    (settings.ai_unknown_teams) : l'IA ne pourrait pas les pronostiquer et le duel serait
+    une impasse. Poignée de matchs sur des centaines, invisible pour l'utilisateur.
     """
     session = TrainingSession(user_id=user_id)
     db.add(session)
     db.flush()
 
-    drawn_matches = db.execute(select(HistoricalMatch.id).order_by(func.random()).limit(match_count)).scalars()
+    unknown_teams = settings.ai_unknown_teams_set
+    stmt = select(HistoricalMatch.id)
+    if unknown_teams:
+        excluded_team_ids = select(Team.id).where(Team.name.in_(unknown_teams)).scalar_subquery()
+        stmt = stmt.where(
+            HistoricalMatch.home_team_id.not_in(excluded_team_ids),
+            HistoricalMatch.away_team_id.not_in(excluded_team_ids),
+        )
+    drawn_matches = db.execute(stmt.order_by(func.random()).limit(match_count)).scalars()
 
     for position, historical_match_id in enumerate(drawn_matches, start=1):
         db.add(

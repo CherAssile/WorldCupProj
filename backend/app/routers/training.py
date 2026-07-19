@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_ai_client, get_current_user
 from app.models.training_session import TrainingSession
 from app.models.user import User
 from app.schemas.team import TeamRead
@@ -16,7 +16,7 @@ from app.schemas.training import (
     TrainingSessionResultsRead,
 )
 from app.services import scoring
-from app.services.ai_client import AIClient
+from app.services.ai_client import AIClient, UnknownTeamError
 
 router = APIRouter(prefix="/training/sessions", tags=["entraînement"])
 
@@ -78,13 +78,14 @@ def submit_training_prediction(
     prediction_in: TrainingPredictionCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    ai_client: AIClient = Depends(get_ai_client),
 ) -> TrainingMatchResultRead:
     """Soumet le pronostic pour ce match de la session.
 
-    Récupère ensuite le pronostic de l'IA via ai_client -- appelée point-in-time, avec
-    seulement les identifiants des équipes, jamais le résultat -- révèle le vrai score et
-    note les deux avec le barème de scoring.py. N'écrit QUE dans training_predictions :
-    jamais dans predictions, scores ni le classement (isolation du mode entraînement).
+    Récupère ensuite le pronostic de l'IA via ai_client -- appelée point-in-time (date du
+    match passé transmise, jamais le résultat) avec les NOMS des équipes -- révèle le vrai
+    score et note les deux avec le barème de scoring.py. N'écrit QUE dans
+    training_predictions : jamais dans predictions, scores ni le classement (isolation).
     """
     session = crud.training.get_session(db, session_id)
     if session is None or session.user_id != current_user.id:
@@ -99,10 +100,22 @@ def submit_training_prediction(
 
     historical_match = session_match.historical_match
 
-    ai_client = AIClient()
-    ai_prediction = ai_client.predict_match(
-        home_team_id=historical_match.home_team_id, away_team_id=historical_match.away_team_id
-    )
+    # Point-in-time : le service IA ne calcule qu'avec les données antérieures à la date du
+    # match, sinon il « verrait le futur » qu'il est censé prédire (cf. CLAUDE.md).
+    try:
+        ai_prediction = ai_client.predict_match(
+            home_team=historical_match.home_team.name,
+            away_team=historical_match.away_team.name,
+            reference_date=historical_match.played_at.date(),
+            match_id=historical_match.id,
+        )
+    except UnknownTeamError as exc:
+        # Ne devrait pas arriver : ces matchs sont exclus du tirage (settings.ai_unknown_teams).
+        # Défense en profondeur avec un message clair nommant l'équipe, jamais un 503 opaque.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Le service IA ne peut pas pronostiquer ce match : {exc.detail}",
+        ) from exc
     if ai_prediction is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service IA indisponible, réessayez."

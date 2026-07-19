@@ -29,7 +29,7 @@ from app.models.match import Match
 from app.models.simulation_match_result import SimulationMatchResult
 from app.models.simulation_run import SimulationRun
 from app.models.team import Team
-from app.services.ai_client import AIClient
+from app.services.ai_client import NEUTRAL_FALLBACK_PREDICTION, AIClient, MatchPrediction, UnknownTeamError
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +212,37 @@ def _team_group_map(db: Session) -> dict[int, str]:
     return {team.id: team.group_name for team in db.execute(select(Team)).scalars() if team.group_name is not None}
 
 
+def _team_name_map(db: Session) -> dict[int, str]:
+    """id -> nom, pour envoyer des NOMS au service IA (jamais des IDs, cf. CLAUDE.md)."""
+    return {team.id: team.name for team in db.execute(select(Team)).scalars()}
+
+
+def _predict_score(
+    ai_client: AIClient,
+    team_names: dict[int, str],
+    home_team_id: int,
+    away_team_id: int,
+    context: str,
+    match_id: int | None = None,
+) -> MatchPrediction:
+    """Prédiction IA par noms d'équipes. reference_date=None : la simulation est un
+    « et si » hors point-in-time (bac à sable), tout l'historique est légitime. Une équipe
+    inconnue du modèle ne bloque pas le tournoi (repli neutre) ; seule une panne réelle du
+    service (None) arrête la simulation sans rien persister."""
+    try:
+        prediction = ai_client.predict_match(
+            home_team=team_names[home_team_id],
+            away_team=team_names[away_team_id],
+            reference_date=None,
+            match_id=match_id,
+        )
+    except UnknownTeamError:
+        return NEUTRAL_FALLBACK_PREDICTION
+    if prediction is None:
+        raise AIServiceUnavailable(f"Service IA indisponible pour {context}.")
+    return prediction
+
+
 def _real_results_by_phase_and_pair(db: Session) -> dict[tuple[MatchPhase, frozenset[int]], Match]:
     """Tous les matchs réels déjà joués, indexés par (phase, paire d'équipes) -- la phase
     fait partie de la clé pour ne jamais confondre deux équipes qui s'affronteraient deux
@@ -230,6 +261,7 @@ def _simulate_group_phase(
     db: Session,
     ai_client: AIClient,
     team_groups: dict[int, str],
+    team_names: dict[int, str],
     freeze_played: bool,
 ) -> tuple[list[SimulatedMatch], dict[str, list[GroupMatchResult]]]:
     """Un match de groupe déjà joué garde son résultat réel (gelé) ; un match à venir est
@@ -253,9 +285,10 @@ def _simulate_group_phase(
             home_score, away_score = match.home_score, match.away_score
             is_frozen = True
         else:
-            prediction = ai_client.predict_match(match.home_team_id, match.away_team_id, match.id)
-            if prediction is None:
-                raise AIServiceUnavailable(f"Service IA indisponible pour le match {match.id} (groupe).")
+            prediction = _predict_score(
+                ai_client, team_names, match.home_team_id, match.away_team_id,
+                context=f"le match {match.id} (groupe)", match_id=match.id,
+            )
             home_score, away_score = prediction.predicted_home_score, prediction.predicted_away_score
             is_frozen = False
 
@@ -286,6 +319,7 @@ def _simulate_knockout_match(
     away_team_id: int,
     real_results: dict[tuple[MatchPhase, frozenset[int]], Match],
     ai_client: AIClient,
+    team_names: dict[int, str],
     tie_break_seed: str,
 ) -> SimulatedMatch:
     """Si ce même affrontement, à ce même tour, a déjà réellement eu lieu, garde son
@@ -308,11 +342,9 @@ def _simulate_knockout_match(
             is_frozen_real_result=True,
         )
 
-    prediction = ai_client.predict_match(home_team_id, away_team_id)
-    if prediction is None:
-        raise AIServiceUnavailable(
-            f"Service IA indisponible pour {home_team_id} vs {away_team_id} ({phase.value})."
-        )
+    prediction = _predict_score(
+        ai_client, team_names, home_team_id, away_team_id, context=f"{phase.value} ({home_team_id} vs {away_team_id})"
+    )
 
     home_score, away_score = prediction.predicted_home_score, prediction.predicted_away_score
     if home_score > away_score:
@@ -361,9 +393,10 @@ def _run_simulation(
     tie_break_seed = seed or uuid.uuid4().hex
 
     team_groups = _team_group_map(db)
+    team_names = _team_name_map(db)
     real_results = _real_results_by_phase_and_pair(db) if freeze_played else {}
 
-    simulated_matches, group_results = _simulate_group_phase(db, ai_client, team_groups, freeze_played)
+    simulated_matches, group_results = _simulate_group_phase(db, ai_client, team_groups, team_names, freeze_played)
 
     winners: list[GroupStanding] = []
     runners_up: list[GroupStanding] = []
@@ -384,7 +417,7 @@ def _run_simulation(
 
     for phase in KNOCKOUT_ROUND_ORDER:
         round_matches = [
-            _simulate_knockout_match(phase, home_id, away_id, real_results, ai_client, tie_break_seed)
+            _simulate_knockout_match(phase, home_id, away_id, real_results, ai_client, team_names, tie_break_seed)
             for home_id, away_id in current_pairs
         ]
         simulated_matches.extend(round_matches)
@@ -398,7 +431,7 @@ def _run_simulation(
                 m.away_team_id if m.winner_team_id == m.home_team_id else m.home_team_id for m in round_matches
             ]
             third_place_match = _simulate_knockout_match(
-                MatchPhase.THIRD_PLACE, loser_ids[0], loser_ids[1], real_results, ai_client, tie_break_seed
+                MatchPhase.THIRD_PLACE, loser_ids[0], loser_ids[1], real_results, ai_client, team_names, tie_break_seed
             )
             simulated_matches.append(third_place_match)
 
