@@ -6,6 +6,7 @@ from app.models.historical_match import HistoricalMatch
 from app.models.lineup import Lineup
 from app.models.lineup_player import LineupPlayer
 from app.models.match import Match
+from app.models.password_reset_token import PasswordResetToken
 from app.models.player import Player
 from app.models.prediction import Prediction
 from app.models.score import Score
@@ -28,6 +29,7 @@ __all__ = [
     "Match",
     "MatchPhase",
     "MatchStatus",
+    "PasswordResetToken",
     "Player",
     "Prediction",
     "Score",

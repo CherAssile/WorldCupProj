@@ -3,11 +3,12 @@ import { Button } from "./Button";
 
 interface LoginFormProps {
   onSubmit?: (email: string, password: string) => void;
+  onForgotPassword?: () => void;
   isSubmitting?: boolean;
   error?: string | null;
 }
 
-export function LoginForm({ onSubmit, isSubmitting = false, error }: LoginFormProps) {
+export function LoginForm({ onSubmit, onForgotPassword, isSubmitting = false, error }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -80,9 +81,9 @@ export function LoginForm({ onSubmit, isSubmitting = false, error }: LoginFormPr
           </button>
         </div>
         <div className="mt-2 text-right">
-          <a href="#" className="text-xs font-semibold text-ink-secondary">
+          <button type="button" onClick={onForgotPassword} className="text-xs font-semibold text-ink-secondary">
             Mot de passe oublié ?
-          </a>
+          </button>
         </div>
       </div>
 

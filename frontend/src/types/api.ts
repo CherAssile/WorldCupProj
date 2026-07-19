@@ -43,6 +43,10 @@ export interface Token {
   token_type: string;
 }
 
+export interface Message {
+  message: string;
+}
+
 // ---------------------------------------------------------------------------
 // Équipes & joueurs
 // ---------------------------------------------------------------------------

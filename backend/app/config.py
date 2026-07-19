@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     ai_service_url: str = "http://localhost:8001"
     cors_origins: str = "http://localhost:5173"
     football_api_key: str | None = None
+    # Réinitialisation de mot de passe : backend d'envoi ("logging" en dev, fournisseur
+    # réel au déploiement) et base des liens envoyés aux utilisateurs.
+    email_backend: str = "logging"
+    frontend_base_url: str = "http://localhost:5173"
 
     @property
     def cors_origins_list(self) -> list[str]:

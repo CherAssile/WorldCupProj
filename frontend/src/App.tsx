@@ -5,13 +5,17 @@ import { Bracket } from "./pages/Bracket";
 import { Classement } from "./pages/Classement";
 import { Connexion } from "./pages/Connexion";
 import { Entrainement } from "./pages/Entrainement";
+import { MotDePasseOublie } from "./pages/MotDePasseOublie";
 import { Pronostics } from "./pages/Pronostics";
 import { Recompenses } from "./pages/Recompenses";
+import { Reinitialiser } from "./pages/Reinitialiser";
 
 function App() {
   return (
     <Routes>
       <Route path="/connexion" element={<Connexion />} />
+      <Route path="/mot-de-passe-oublie" element={<MotDePasseOublie />} />
+      <Route path="/reinitialiser" element={<Reinitialiser />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Navigate to="/accueil" replace />} />

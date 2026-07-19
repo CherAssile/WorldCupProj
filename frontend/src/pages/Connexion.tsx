@@ -56,7 +56,12 @@ export function Connexion() {
 
   const form =
     mode === "login" ? (
-      <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} error={error} />
+      <LoginForm
+        onSubmit={handleLogin}
+        onForgotPassword={() => navigate("/mot-de-passe-oublie")}
+        isSubmitting={isSubmitting}
+        error={error}
+      />
     ) : (
       <RegisterForm onSubmit={handleRegister} isSubmitting={isSubmitting} error={error} />
     );
