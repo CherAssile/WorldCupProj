@@ -113,12 +113,14 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
             {
               id: "home",
               label: match.home_team?.name ?? match.home_placeholder_label ?? "Équipe à domicile",
+              labelShort: match.home_placeholder_label_short ?? undefined,
               fifaCode: match.home_team?.fifa_code,
               flagUrl: match.home_team?.flag_url,
             },
             {
               id: "away",
               label: match.away_team?.name ?? match.away_placeholder_label ?? "Équipe à l'extérieur",
+              labelShort: match.away_placeholder_label_short ?? undefined,
               fifaCode: match.away_team?.fifa_code,
               flagUrl: match.away_team?.flag_url,
             },
