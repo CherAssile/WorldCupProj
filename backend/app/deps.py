@@ -8,6 +8,7 @@ from app.crud import user as user_crud
 from app.database import get_db
 from app.models.user import User
 from app.services.ai_client import AIClient
+from app.services.football_api import FootballApiClient
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -16,6 +17,12 @@ def get_ai_client() -> AIClient:
     """Fournit le client du service IA. Injecté par dépendance pour que les tests puissent
     le remplacer par un faux client (sans dépendre du vrai dataset du service)."""
     return AIClient()
+
+
+def get_football_api_client() -> FootballApiClient:
+    """Fournit le client de la source du calendrier (openfootball). Injecté par dépendance
+    pour que les tests puissent le remplacer par un client de repli, sans appel réseau réel."""
+    return FootballApiClient()
 
 
 def get_current_user(

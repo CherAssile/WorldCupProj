@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     # d'évoluer : régénérer avec `python -m scripts.check_ai_team_coverage` après tout
     # ré-import du calendrier ou mise à jour du service IA.
     ai_unknown_teams: str = "Curaçao"
+    # Chaîne complète de synchronisation (calendrier, placeholders, scores, classement),
+    # cf. app.services.scheduler. Fréquence de base du tick ; le tick lui-même ne relance
+    # la chaîne que s'il existe un match en cours ou fraîchement terminé (cf.
+    # scheduler._has_match_needing_sync), pas à chaque tick sans discrimination.
+    sync_interval_minutes: int = 10
+    # Coupé pendant les tests (cf. tests/conftest.py) : un scheduler en tâche de fond
+    # rendrait la suite pytest non déterministe (écritures concurrentes à la transaction
+    # de test, appels réseau réels).
+    sync_scheduler_enabled: bool = True
 
     @property
     def cors_origins_list(self) -> list[str]:

@@ -1,4 +1,10 @@
+import os
 from collections.abc import Generator
+
+# Doit être posé avant l'import de app.main (donc de app.config) : le scheduler de synchro
+# (app.services.scheduler) lirait sinon settings.sync_scheduler_enabled=True et tournerait
+# en tâche de fond pendant la suite pytest, la rendant non déterministe.
+os.environ.setdefault("SYNC_SCHEDULER_ENABLED", "false")
 
 import pytest
 from fastapi.testclient import TestClient

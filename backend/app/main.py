@@ -1,3 +1,7 @@
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from redis.exceptions import RedisError
@@ -9,6 +13,7 @@ from app.core.errors import install_exception_handlers
 from app.database import engine
 from app.redis_client import redis_client
 from app.routers import (
+    admin,
     ai_predictions,
     auth,
     award_predictions,
@@ -22,6 +27,12 @@ from app.routers import (
     teams,
     training,
 )
+from app.services.scheduler import start_scheduler
+
+# Sans ceci, les logs INFO du scheduler de synchro (résumé de chaque exécution -- cf.
+# app.services.scheduler) restent invisibles sous uvicorn (root logger à WARNING par
+# défaut), ce qui viderait de son sens l'exigence de pouvoir diagnostiquer sans fouiller.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 # Regroupement du /docs par domaine métier plutôt que par router technique : plusieurs
 # routers peuvent partager un même tag (ex. teams/matches/players -> "matchs").
@@ -58,7 +69,15 @@ OPENAPI_TAGS = [
     {"name": "système", "description": "Supervision technique de l'API (santé du service et de ses dépendances)."},
 ]
 
-app = FastAPI(title="Mundial Pronos API", openapi_tags=OPENAPI_TAGS)
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    scheduler = start_scheduler()
+    yield
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
+
+
+app = FastAPI(title="Mundial Pronos API", openapi_tags=OPENAPI_TAGS, lifespan=lifespan)
 
 install_exception_handlers(app)
 
@@ -70,6 +89,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(teams.router)
 app.include_router(matches.router)
@@ -81,6 +101,7 @@ app.include_router(leaderboard.router)
 app.include_router(me.router)
 app.include_router(ai_predictions.router)
 app.include_router(training.router)
+app.include_router(training.tournaments_router)
 app.include_router(simulations.router)
 
 
