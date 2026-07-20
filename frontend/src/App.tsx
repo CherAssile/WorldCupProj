@@ -4,6 +4,7 @@ import { Accueil } from "./pages/Accueil";
 import { Bracket } from "./pages/Bracket";
 import { Classement } from "./pages/Classement";
 import { Connexion } from "./pages/Connexion";
+import { Duel } from "./pages/Duel";
 import { Entrainement } from "./pages/Entrainement";
 import { MotDePasseOublie } from "./pages/MotDePasseOublie";
 import { Pronostics } from "./pages/Pronostics";
@@ -24,6 +25,7 @@ function App() {
         <Route path="/classement" element={<Classement />} />
         <Route path="/recompenses" element={<Recompenses />} />
         <Route path="/bracket" element={<Bracket />} />
+        <Route path="/duel-ia" element={<Duel />} />
         <Route path="/entrainement" element={<Entrainement />} />
       </Route>
     </Routes>

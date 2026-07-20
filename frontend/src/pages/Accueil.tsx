@@ -3,6 +3,7 @@ import { AppBottomNav } from "../components/AppBottomNav";
 import { AppTopNav } from "../components/AppTopNav";
 import {
   AiPickCard,
+  DuelBanner,
   ErrorState,
   LoadingState,
   NextMatchHero,
@@ -13,6 +14,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useAiPrediction } from "../hooks/useAiPrediction";
 import { useMatches } from "../hooks/useMatches";
+import { useMyDuel } from "../hooks/useMyDuel";
 import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { getInitials } from "../lib/initials";
 import { findNextMatch } from "../lib/nextMatch";
@@ -48,6 +50,7 @@ export function Accueil() {
   const { user, logout } = useAuth();
   const leaderboard = useMyLeaderboardEntry();
   const matchesQuery = useMatches();
+  const duelQuery = useMyDuel();
 
   const nextMatch = matchesQuery.isSuccess ? findNextMatch(matchesQuery.data) : null;
   const aiPredictionQuery = useAiPrediction(nextMatch?.id ?? null);
@@ -144,6 +147,17 @@ export function Accueil() {
             {aiPick ? <div className="col-span-2 hidden md:flex">{aiPick}</div> : null}
           </div>
         </div>
+
+        {duelQuery.isSuccess ? (
+          <div className="px-5 pb-4 md:px-8">
+            <DuelBanner
+              userPoints={duelQuery.data.user_total_points}
+              aiPoints={duelQuery.data.ai_total_points}
+              matchesCompared={duelQuery.data.matches_compared}
+              onClick={() => navigate("/duel-ia")}
+            />
+          </div>
+        ) : null}
 
         {aiPick ? <div className="px-5 pb-8 md:hidden">{aiPick}</div> : null}
       </div>

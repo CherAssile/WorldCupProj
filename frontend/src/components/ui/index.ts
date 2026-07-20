@@ -6,6 +6,7 @@ export type { BracketMatchTeam } from "./BracketMatchCard";
 export { BrandPanel } from "./BrandPanel";
 export { Button } from "./Button";
 export { CountdownTimer } from "./CountdownTimer";
+export { DuelBanner } from "./DuelBanner";
 export { ErrorState } from "./ErrorState";
 export { FinishedMatchDuelCard } from "./FinishedMatchDuelCard";
 export { LeaderboardRow } from "./LeaderboardRow";
