@@ -2,7 +2,7 @@ import { Button } from "./Button";
 import { QualifierSelector, type QualifierOption } from "./QualifierSelector";
 import { ScoreInput } from "./ScoreInput";
 
-type MatchCardStatus = "editable" | "locked" | "graded";
+type MatchCardStatus = "editable" | "locked";
 
 export interface MatchTeamInfo {
   name: string;
@@ -14,14 +14,11 @@ const CONTAINER_CLASSES: Record<MatchCardStatus, string> = {
   editable:
     "border border-white/[0.07] bg-gradient-to-b from-[#182444] to-[#131C33] shadow-[0_12px_30px_rgba(0,0,0,0.35)]",
   locked: "border border-white/[0.05] bg-[#121A2D]",
-  graded:
-    "border border-accent/[0.28] bg-gradient-to-b from-[#1B2438] to-[#141B2C] shadow-[0_10px_28px_rgba(0,0,0,0.35)]",
 };
 
 const META_CLASSES: Record<MatchCardStatus, string> = {
   editable: "text-ink-secondary font-semibold",
   locked: "text-[#EC7167] font-bold",
-  graded: "text-ink-secondary font-semibold",
 };
 
 const BADGE_CONFIG: Record<MatchCardStatus, { label: string; textClass: string; bgClass: string; icon: JSX.Element }> = {
@@ -47,34 +44,11 @@ const BADGE_CONFIG: Record<MatchCardStatus, { label: string; textClass: string; 
       </svg>
     ),
   },
-  graded: {
-    label: "Pointé",
-    textClass: "text-[#2A1B03]",
-    bgClass: "bg-gradient-to-br from-accent-light to-accent-dark",
-    icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 6 9 17l-5-5" />
-      </svg>
-    ),
-  },
 };
 
-interface StaticScoreBoxProps {
-  value: number | string;
-  variant: "locked" | "graded-exact" | "graded-neutral";
-}
-
-const STATIC_SCORE_CLASSES: Record<StaticScoreBoxProps["variant"], string> = {
-  locked: "border-[#202B42] bg-[#101728] text-[#6B7488]",
-  "graded-exact": "border-primary bg-[#0F1729] text-ink",
-  "graded-neutral": "border-line bg-[#0F1729] text-ink",
-};
-
-function StaticScoreBox({ value, variant }: StaticScoreBoxProps) {
+function StaticScoreBox({ value }: { value: string }) {
   return (
-    <div
-      className={`num flex h-[58px] w-[50px] items-center justify-center rounded-[14px] border-2 text-[28px] font-extrabold ${STATIC_SCORE_CLASSES[variant]}`}
-    >
+    <div className="num flex h-[58px] w-[50px] items-center justify-center rounded-[14px] border-2 border-[#202B42] bg-[#101728] text-[28px] font-extrabold text-[#6B7488]">
       {value}
     </div>
   );
@@ -138,11 +112,7 @@ interface MatchPredictionCardProps {
   awayScore: number | string;
   onHomeScoreChange?: (value: string) => void;
   onAwayScoreChange?: (value: string) => void;
-  isExactScore?: boolean;
   lockedNote?: string;
-  resultLabel?: string;
-  pointsVariant?: "exact" | "correct" | "none";
-  pointsLabel?: string;
   qualifier?: {
     options: readonly [QualifierOption, QualifierOption];
     value: string | null;
@@ -155,6 +125,14 @@ interface MatchPredictionCardProps {
   justSaved?: boolean;
 }
 
+/**
+ * Carte de pronostic pour un match PAS ENCORE terminé (sans home_score/away_score en
+ * base) : modifiable avant le coup d'envoi, verrouillée après. Un match sans résultat
+ * connu ne doit jamais afficher de score dans les cases prévues pour ça, quel que soit
+ * l'état -- les cases restent à "–" une fois verrouillé (cf. lockedNote pour afficher le
+ * pronostic de l'utilisateur, explicitement distinct d'un résultat). Un match terminé et
+ * pointé est un composant à part (FinishedMatchDuelCard), jamais celui-ci.
+ */
 export function MatchPredictionCard({
   status,
   metaLabel,
@@ -166,11 +144,7 @@ export function MatchPredictionCard({
   awayScore,
   onHomeScoreChange,
   onAwayScoreChange,
-  isExactScore = false,
   lockedNote,
-  resultLabel,
-  pointsVariant,
-  pointsLabel,
   qualifier,
   onSave,
   saveDisabled = false,
@@ -205,9 +179,9 @@ export function MatchPredictionCard({
             </>
           ) : (
             <>
-              <StaticScoreBox value={homeScore} variant={status === "locked" ? "locked" : isExactScore ? "graded-exact" : "graded-neutral"} />
+              <StaticScoreBox value={String(homeScore)} />
               <span className="text-base font-bold text-ink-muted">–</span>
-              <StaticScoreBox value={awayScore} variant={status === "locked" ? "locked" : isExactScore ? "graded-exact" : "graded-neutral"} />
+              <StaticScoreBox value={String(awayScore)} />
             </>
           )}
         </div>
@@ -217,15 +191,6 @@ export function MatchPredictionCard({
 
       {status === "locked" && lockedNote ? (
         <div className="num mt-3 text-center text-[11px] text-ink-secondary">{lockedNote}</div>
-      ) : null}
-
-      {status === "graded" && resultLabel && pointsVariant && pointsLabel ? (
-        <div className="mt-4 flex items-center justify-between border-t border-white/[0.08] pt-3.5">
-          <span className="num text-xs text-ink-secondary">{resultLabel}</span>
-          <span className="num inline-flex items-center gap-1.5 rounded-xl bg-elevated px-[15px] py-2 text-base font-extrabold text-ink-body">
-            {pointsLabel}
-          </span>
-        </div>
       ) : null}
 
       {status === "editable" && qualifier ? <QualifierSelector {...qualifier} /> : null}

@@ -131,18 +131,25 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
           ]
       : undefined;
 
-  const metaLabel =
-    status === "locked"
+  // Un match sans home_score/away_score en base n'a PAS de résultat connu, quel que soit
+  // le temps écoulé depuis le coup d'envoi : ne jamais afficher "Terminé" ni un score tant
+  // que la synchro ne les a pas renseignés (cf. CLAUDE.md, anti-triche et cohérence UI).
+  const isFinished = match.home_score !== null && match.away_score !== null;
+
+  const metaLabel = isFinished
+    ? `Terminé · ${KICKOFF_FORMATTER.format(new Date(match.kickoff_at))}`
+    : status === "locked"
       ? match.status === "live"
         ? "● En direct"
-        : `Terminé · ${KICKOFF_FORMATTER.format(new Date(match.kickoff_at))}`
+        : `Verrouillé · ${KICKOFF_FORMATTER.format(new Date(match.kickoff_at))}`
       : `Coup d'envoi · ${KICKOFF_FORMATTER.format(new Date(match.kickoff_at))}`;
 
+  // Le pronostic reste visible une fois verrouillé, mais jamais dans les cases de score
+  // (réservées au résultat réel) : toujours nommé explicitement "Ton prono", jamais confondu
+  // avec "Résultat".
   const lockedNote = existingPrediction
-    ? "Votre prono est verrouillé depuis le coup d'envoi"
-    : "Vous n'avez pas pronostiqué ce match";
-
-  const isFinished = match.status === "finished" && match.home_score !== null && match.away_score !== null;
+    ? `Ton prono : ${existingPrediction.predicted_home_score}–${existingPrediction.predicted_away_score} · Résultat pas encore connu`
+    : "Tu n'as pas pronostiqué ce match · Résultat pas encore connu";
 
   if (isFinished) {
     const duelEntry = duelQuery.data?.results.find((r) => r.match_id === match.id);
@@ -173,8 +180,8 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
       awayTeam={awayTeam}
       homePlaceholder={match.home_placeholder_label ?? match.home_placeholder}
       awayPlaceholder={match.away_placeholder_label ?? match.away_placeholder}
-      homeScore={status === "editable" ? homeScore : (existingPrediction?.predicted_home_score ?? "–")}
-      awayScore={status === "editable" ? awayScore : (existingPrediction?.predicted_away_score ?? "–")}
+      homeScore={status === "editable" ? homeScore : "–"}
+      awayScore={status === "editable" ? awayScore : "–"}
       onHomeScoreChange={setHomeScore}
       onAwayScoreChange={setAwayScore}
       lockedNote={lockedNote}
