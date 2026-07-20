@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.ai_prediction import AiPrediction
 from app.models.award import Award
 from app.models.award_prediction import AwardPrediction
 from app.models.enums import MatchPhase, PredictedWinnerSide
@@ -104,13 +105,48 @@ def _qualifier_points(prediction: Prediction, match: Match) -> int:
     return 0
 
 
+@dataclass(frozen=True)
+class ScoreBreakdown:
+    """Détail d'un total de points, pour l'affichage (« 3 pts (score exact) + 2 pts (bon
+    qualifié), × 2 (demi-finale) = 10 pts ») sans dupliquer le barème côté frontend."""
+
+    score_points: int
+    qualifier_points: int
+    doubled: bool
+    total: int
+
+
+def score_match_prediction_breakdown(prediction: Prediction, match: Match) -> ScoreBreakdown:
+    score_points = _score_points(prediction, match)
+    qualifier_points = _qualifier_points(prediction, match)
+    doubled = match.phase in DOUBLED_PHASES
+    total = (score_points + qualifier_points) * (2 if doubled else 1)
+    return ScoreBreakdown(score_points=score_points, qualifier_points=qualifier_points, doubled=doubled, total=total)
+
+
 def score_match_prediction(prediction: Prediction, match: Match) -> int:
     """Points d'un pronostic de match : score + qualifié (cumulables), puis coefficient
     de phase finale appliqué au total du match."""
-    points = _score_points(prediction, match) + _qualifier_points(prediction, match)
-    if match.phase in DOUBLED_PHASES:
-        points *= 2
-    return points
+    return score_match_prediction_breakdown(prediction, match).total
+
+
+def score_ai_match_prediction_breakdown(ai_prediction: AiPrediction, match: Match) -> ScoreBreakdown:
+    """Même décomposition que le joueur, mais SANS volet qualifié -- l'IA n'en pronostique
+    pas (ai_predictions n'a pas ce champ)."""
+    doubled = match.phase in DOUBLED_PHASES
+    if match.home_score is None or match.away_score is None:
+        return ScoreBreakdown(score_points=0, qualifier_points=0, doubled=doubled, total=0)
+    score_points = _points_for_score_guess(
+        ai_prediction.predicted_home_score, ai_prediction.predicted_away_score, match.home_score, match.away_score
+    )
+    total = score_points * (2 if doubled else 1)
+    return ScoreBreakdown(score_points=score_points, qualifier_points=0, doubled=doubled, total=total)
+
+
+def score_ai_match_prediction(ai_prediction: AiPrediction, match: Match) -> int:
+    """Points de l'IA sur un match compétitif. Lecture seule pour le duel joueur/IA
+    (GET /me/duel-ia) : n'écrit jamais dans scores ni le classement."""
+    return score_ai_match_prediction_breakdown(ai_prediction, match).total
 
 
 def score_award_prediction(prediction: AwardPrediction, award: Award) -> int:

@@ -7,6 +7,7 @@ export { BrandPanel } from "./BrandPanel";
 export { Button } from "./Button";
 export { CountdownTimer } from "./CountdownTimer";
 export { ErrorState } from "./ErrorState";
+export { FinishedMatchDuelCard } from "./FinishedMatchDuelCard";
 export { LeaderboardRow } from "./LeaderboardRow";
 export type { LeaderboardPlayer } from "./LeaderboardRow";
 export { LoadingState } from "./LoadingState";

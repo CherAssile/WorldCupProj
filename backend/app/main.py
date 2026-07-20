@@ -15,6 +15,7 @@ from app.routers import (
     awards,
     leaderboard,
     matches,
+    me,
     players,
     predictions,
     simulations,
@@ -36,6 +37,11 @@ OPENAPI_TAGS = [
         "description": "Récompenses individuelles (meilleur buteur, passeur, joueur) et pronostics associés.",
     },
     {"name": "classement", "description": "Classement global du concours compétitif."},
+    {
+        "name": "duel",
+        "description": "Duel joueur contre IA en mode compétitif : lecture agrégée des pronostics et de "
+        "l'IA sur les mêmes matchs, sans toucher au classement général.",
+    },
     {
         "name": "entraînement",
         "description": "Joueur contre la Machine, sur des matchs déjà joués (Mondial en cours ou éditions "
@@ -72,6 +78,7 @@ app.include_router(predictions.router)
 app.include_router(awards.router)
 app.include_router(award_predictions.router)
 app.include_router(leaderboard.router)
+app.include_router(me.router)
 app.include_router(ai_predictions.router)
 app.include_router(training.router)
 app.include_router(simulations.router)

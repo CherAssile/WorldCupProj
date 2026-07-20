@@ -249,6 +249,50 @@ export interface TrainingSessionResultsRead {
 }
 
 // ---------------------------------------------------------------------------
+// Duel joueur contre IA (mode compétitif)
+// ---------------------------------------------------------------------------
+
+export interface MatchDuelRead {
+  match_id: number;
+  num: number | null;
+  phase: MatchPhase;
+  kickoff_at: string;
+  home_team: TeamRead | null;
+  away_team: TeamRead | null;
+  home_score: number | null;
+  away_score: number | null;
+  winner_team: TeamRead | null;
+
+  user_predicted_home_score: number | null;
+  user_predicted_away_score: number | null;
+  user_predicted_winner_team_id: number | null;
+  user_predicted_winner_side: PredictedWinnerSide | null;
+  user_score_points: number | null;
+  user_qualifier_points: number | null;
+  /** null = pas pronostiqué (distinct de 0 : pronostiqué et raté). */
+  user_points: number | null;
+
+  /** null = pas de pronostic IA pour ce match (historique pas encore comblé). */
+  ai_predicted_home_score: number | null;
+  ai_predicted_away_score: number | null;
+  ai_points: number | null;
+  ai_is_fallback: boolean | null;
+
+  doubled: boolean;
+}
+
+export interface DuelSummaryRead {
+  user_total_points: number;
+  ai_total_points: number;
+  gap: number;
+  matches_compared: number;
+  matches_user_ahead: number;
+  matches_ai_ahead: number;
+  matches_tied: number;
+  results: MatchDuelRead[];
+}
+
+// ---------------------------------------------------------------------------
 // Erreurs FastAPI
 // ---------------------------------------------------------------------------
 

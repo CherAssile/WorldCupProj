@@ -18,9 +18,14 @@ PAST_KICKOFF = datetime.now(timezone.utc) - timedelta(days=1)
 
 
 class _FakeAIClient:
-    """Prédiction déterministe par noms d'équipes : ne dépend pas du vrai dataset IA."""
+    """Prédiction déterministe par noms d'équipes : ne dépend pas du vrai dataset IA.
+    Journalise chaque appel (dont reference_date) pour vérifier le point-in-time."""
+
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
 
     def predict_match(self, home_team: str, away_team: str, reference_date=None, match_id=None) -> MatchPrediction:
+        self.calls.append({"home_team": home_team, "away_team": away_team, "reference_date": reference_date, "match_id": match_id})
         return MatchPrediction(predicted_home_score=2, predicted_away_score=1)
 
 
@@ -77,7 +82,10 @@ def _create_match(
     return match
 
 
-def test_generate_creates_predictions_for_upcoming_and_none_for_played(db_session: Session) -> None:
+def test_generate_creates_upcoming_and_backfills_played(db_session: Session) -> None:
+    """Un match à venir est (re)généré normalement ; un match déjà joué sans pronostic IA
+    est comblé une seule fois (backfill), avec reference_date = sa date de coup d'envoi
+    -- sinon l'IA verrait le résultat qu'elle est censée avoir prédit."""
     _clear_matches(db_session)
     home1, away1 = _create_teams(db_session, "UPA")
     upcoming = _create_match(db_session, home1, away1, FUTURE_KICKOFF)
@@ -85,8 +93,10 @@ def test_generate_creates_predictions_for_upcoming_and_none_for_played(db_sessio
     home2, away2 = _create_teams(db_session, "PLY")
     played = _create_match(db_session, home2, away2, PAST_KICKOFF, home_score=2, away_score=1)
 
-    result = generate_ai_predictions(db_session, ai_client=_FakeAIClient())
+    fake = _FakeAIClient()
+    result = generate_ai_predictions(db_session, ai_client=fake)
     assert result.created == 1
+    assert result.backfilled == 1
     assert result.skipped_ai_unavailable == 0
     assert result.fallback_predictions == 0
 
@@ -96,8 +106,13 @@ def test_generate_creates_predictions_for_upcoming_and_none_for_played(db_sessio
     assert upcoming_prediction is not None
 
     played_prediction = db_session.query(AiPrediction).filter(AiPrediction.match_id == played.id).one_or_none()
-    assert played_prediction is None
-    assert db_session.query(AiPrediction).count() == 1
+    assert played_prediction is not None  # comblé, plus jamais absent
+    assert db_session.query(AiPrediction).count() == 2
+
+    upcoming_call = next(c for c in fake.calls if c["match_id"] == upcoming.id)
+    played_call = next(c for c in fake.calls if c["match_id"] == played.id)
+    assert upcoming_call["reference_date"] is None  # à venir : tout l'historique légitime
+    assert played_call["reference_date"] == PAST_KICKOFF.date()  # déjà joué : point-in-time
 
 
 def test_generate_skips_matches_with_unresolved_teams(db_session: Session) -> None:
@@ -145,21 +160,45 @@ def test_regenerate_is_idempotent_and_updates_existing_prediction(db_session: Se
     assert db_session.query(AiPrediction).filter(AiPrediction.match_id == match.id).count() == 1
 
 
-def test_regenerate_removes_stale_prediction_once_match_is_played(db_session: Session) -> None:
+def test_prediction_survives_once_match_is_played(db_session: Session) -> None:
+    """Le pronostic IA d'un match, généré quand il était encore à venir, N'EST PLUS purgé
+    une fois le match joué (changement de comportement) : c'est cet historique que le duel
+    joueur/IA et l'affichage d'un match terminé exploitent. Une régénération ultérieure ne
+    le réécrit pas non plus (backfill = une seule fois, jamais réécrit)."""
     _clear_matches(db_session)
     home, away = _create_teams(db_session, "STL")
     match = _create_match(db_session, home, away, FUTURE_KICKOFF)
 
     generate_ai_predictions(db_session, ai_client=_FakeAIClient())
-    assert db_session.query(AiPrediction).filter(AiPrediction.match_id == match.id).count() == 1
+    original = db_session.query(AiPrediction).filter(AiPrediction.match_id == match.id).one()
+    original_id = original.id
 
     match.home_score = 3
     match.away_score = 0
     db_session.commit()
 
     result = generate_ai_predictions(db_session, ai_client=_FakeAIClient())
-    assert result.removed_stale == 1
-    assert db_session.query(AiPrediction).filter(AiPrediction.match_id == match.id).count() == 0
+    assert result.backfilled == 0  # avait déjà un pronostic : rien à combler
+    assert result.updated == 0  # et surtout pas réécrit
+
+    survivor = db_session.query(AiPrediction).filter(AiPrediction.match_id == match.id).one()
+    assert survivor.id == original_id
+
+
+def test_backfill_is_idempotent(db_session: Session) -> None:
+    """Deux appels successifs sur le même match déjà joué sans pronostic IA ne créent
+    qu'une seule ligne (backfill non dupliqué)."""
+    _clear_matches(db_session)
+    home, away = _create_teams(db_session, "BFI")
+    match = _create_match(db_session, home, away, PAST_KICKOFF, home_score=1, away_score=1)
+
+    first = generate_ai_predictions(db_session, ai_client=_FakeAIClient())
+    assert first.backfilled == 1
+
+    second = generate_ai_predictions(db_session, ai_client=_FakeAIClient())
+    assert second.backfilled == 0
+
+    assert db_session.query(AiPrediction).filter(AiPrediction.match_id == match.id).count() == 1
 
 
 def test_get_ai_prediction_endpoint_404_then_200_after_generation(client: TestClient, db_session: Session) -> None:

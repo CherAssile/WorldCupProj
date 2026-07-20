@@ -19,7 +19,9 @@ class AiPredictionRead(BaseModel):
 class AiPredictionGenerationResult(BaseModel):
     created: int
     updated: int
-    removed_stale: int
+    # Pronostics IA générés pour des matchs déjà joués n'en ayant pas encore (historique
+    # manquant, comblé une seule fois par match -- jamais régénéré ensuite).
+    backfilled: int
     skipped_unresolved_teams: int
     skipped_ai_unavailable: int
     # Prédictions de repli neutres servies faute d'équipe reconnue (ex. Curaçao).

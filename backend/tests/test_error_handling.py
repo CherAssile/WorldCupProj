@@ -97,6 +97,7 @@ def test_openapi_tags_group_every_endpoint_by_domain(client: TestClient) -> None
         "pronostics",
         "récompenses",
         "classement",
+        "duel",
         "entraînement",
         "simulation",
         "admin",

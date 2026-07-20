@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { MatchPredictionCard, type MatchTeamInfo, type QualifierOption } from "./ui";
+import { FinishedMatchDuelCard, MatchPredictionCard, type MatchTeamInfo, type QualifierOption } from "./ui";
+import { buildDuelCardSides } from "../lib/duelCard";
+import { useMyDuel } from "../hooks/useMyDuel";
 import { useSavePrediction } from "../hooks/useSavePrediction";
 import { deriveMatchStatus } from "../lib/matchStatus";
 import { frenchTeamName } from "../lib/teamNamesFr";
@@ -42,6 +44,7 @@ interface PredictionMatchCardProps {
 
 export function PredictionMatchCard({ match, existingPrediction }: PredictionMatchCardProps) {
   const savePrediction = useSavePrediction();
+  const duelQuery = useMyDuel();
 
   const [homeScore, setHomeScore] = useState(
     existingPrediction ? String(existingPrediction.predicted_home_score) : ""
@@ -138,6 +141,29 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
   const lockedNote = existingPrediction
     ? "Votre prono est verrouillé depuis le coup d'envoi"
     : "Vous n'avez pas pronostiqué ce match";
+
+  const isFinished = match.status === "finished" && match.home_score !== null && match.away_score !== null;
+
+  if (isFinished) {
+    const duelEntry = duelQuery.data?.results.find((r) => r.match_id === match.id);
+    const duelStatus: "loading" | "error" | "ready" = duelQuery.isLoading ? "loading" : duelQuery.isError ? "error" : "ready";
+    const { user, ai } = duelEntry ? buildDuelCardSides(duelEntry) : { user: null, ai: null };
+
+    return (
+      <FinishedMatchDuelCard
+        metaLabel={metaLabel}
+        homeTeam={homeTeam}
+        awayTeam={awayTeam}
+        homePlaceholder={match.home_placeholder_label ?? match.home_placeholder}
+        awayPlaceholder={match.away_placeholder_label ?? match.away_placeholder}
+        homeScore={match.home_score!}
+        awayScore={match.away_score!}
+        duelStatus={duelStatus}
+        user={user}
+        ai={ai}
+      />
+    );
+  }
 
   return (
     <MatchPredictionCard

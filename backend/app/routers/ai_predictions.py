@@ -15,12 +15,13 @@ def regenerate_ai_predictions(
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> AiPredictionGenerationResult:
-    """(Re)génère les pronostics IA de tous les matchs à venir. Réservé aux administrateurs."""
+    """(Re)génère les pronostics IA des matchs à venir, et comble l'historique manquant
+    pour les matchs déjà joués (backfill point-in-time). Réservé aux administrateurs."""
     result = generate_ai_predictions(db)
     return AiPredictionGenerationResult(
         created=result.created,
         updated=result.updated,
-        removed_stale=result.removed_stale,
+        backfilled=result.backfilled,
         skipped_unresolved_teams=result.skipped_unresolved_teams,
         skipped_ai_unavailable=result.skipped_ai_unavailable,
         fallback_predictions=result.fallback_predictions,
