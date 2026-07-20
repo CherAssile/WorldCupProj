@@ -10,6 +10,7 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { usePlayerSearch } from "../hooks/usePlayerSearch";
 import { getInitials } from "../lib/initials";
+import { frenchTeamName } from "../lib/teamNamesFr";
 import type { AwardCategory, AwardRead, TeamPlayersGroup } from "../types/api";
 
 const CATEGORY_META: Record<AwardCategory, { title: string; subtitle: string; icon: JSX.Element }> = {
@@ -59,7 +60,7 @@ const DATETIME_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 function toSearchGroups(apiGroups: TeamPlayersGroup[]): PlayerSearchTeamGroup[] {
   return apiGroups.map((group) => ({
     teamId: group.team.id,
-    teamName: group.team.name,
+    teamName: frenchTeamName(group.team.name),
     teamFlagUrl: group.team.flag_url,
     players: group.players.map((player) => ({
       id: String(player.id),
@@ -163,7 +164,7 @@ export function Recompenses() {
                       name: prediction.predicted_player.name,
                       initials: getInitials(prediction.predicted_player.name),
                       position: prediction.predicted_player.position ?? "Poste inconnu",
-                      teamName: prediction.predicted_player.team.name,
+                      teamName: frenchTeamName(prediction.predicted_player.team.name),
                       flagUrl: prediction.predicted_player.team.flag_url,
                     }
                   : undefined;

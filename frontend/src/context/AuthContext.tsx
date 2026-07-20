@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
-import { api } from "../lib/api";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { api, UNAUTHORIZED_EVENT } from "../lib/api";
 import { clearToken, getToken, setToken as persistToken } from "../lib/auth";
 import type { UserRead } from "../types/api";
 
@@ -33,8 +33,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     clearToken();
     setToken(null);
-    queryClient.removeQueries({ queryKey: ["auth", "me"] });
+    queryClient.clear();
   }, [queryClient]);
+
+  // Jeton expiré/invalide détecté par le client API (401 sur une requête authentifiée) :
+  // déconnecte pour que ProtectedRoute redirige vers /connexion, plutôt que de laisser
+  // chaque écran afficher une bannière d'erreur réseau pour une session expirée.
+  useEffect(() => {
+    window.addEventListener(UNAUTHORIZED_EVENT, logout);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, logout);
+  }, [logout]);
 
   return (
     <AuthContext.Provider

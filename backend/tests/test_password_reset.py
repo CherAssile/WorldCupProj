@@ -85,7 +85,11 @@ def test_expired_token_rejected(
     _register(client, "reset-expire@example.com")
     token = _request_reset_token(client, "reset-expire@example.com", caplog)
 
-    reset_token = db_session.execute(select(PasswordResetToken)).scalars().all()[-1]
+    # order_by explicite : d'autres jetons peuvent déjà exister sur cette base (usage réel
+    # de la fonctionnalité) -- sans tri, l'ordre de retour n'est pas garanti "insertion".
+    reset_token = (
+        db_session.execute(select(PasswordResetToken).order_by(PasswordResetToken.id.desc())).scalars().first()
+    )
     reset_token.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
     db_session.commit()
 

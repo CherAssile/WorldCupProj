@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TrainingMatchCard, type TrainingTeamInfo } from "./ui";
 import { useSubmitTrainingPrediction } from "../hooks/useSubmitTrainingPrediction";
+import { frenchTeamName } from "../lib/teamNamesFr";
 import type { MatchPhase, TrainingMatchRead, TrainingMatchResultRead } from "../types/api";
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
@@ -16,7 +17,7 @@ const PHASE_LABELS: Record<MatchPhase, string> = {
 const DOUBLED_PHASES = new Set<MatchPhase>(["quarter_final", "semi_final", "third_place", "final"]);
 
 function toTeamInfo(team: TrainingMatchRead["home_team"]): TrainingTeamInfo {
-  return { name: team.name, fifaCode: team.fifa_code, flagUrl: team.flag_url };
+  return { name: frenchTeamName(team.name), fifaCode: team.fifa_code, flagUrl: team.flag_url };
 }
 
 interface TrainingMatchSlotProps {

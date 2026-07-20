@@ -16,6 +16,7 @@ import re
 from dataclasses import dataclass
 
 from app.models.match import Match
+from app.services.team_names_fr import french_team_name
 
 _PLACEHOLDER_PATTERN = re.compile(r"^([WL])(\d+)$")
 
@@ -55,15 +56,19 @@ def resolve_placeholder(code: str | None, matches_by_num: dict[int, Match]) -> P
     kind, num = reference
     match = matches_by_num.get(num)
     if match is not None and match.home_team is not None and match.away_team is not None:
-        home, away = match.home_team, match.away_team
+        # Traduit pour la phrase affichée uniquement : Team.name (anglais, source) n'est
+        # jamais modifié -- c'est lui qui sert au contrat avec ai-service.
+        home_name = french_team_name(match.home_team.name)
+        away_name = french_team_name(match.away_team.name)
+        home_code, away_code = match.home_team.fifa_code, match.away_team.fifa_code
         if kind == "W":
             return PlaceholderLabels(
-                long=f"{home.name} ou {away.name}",
-                short=f"{home.fifa_code}/{away.fifa_code}",
+                long=f"{home_name} ou {away_name}",
+                short=f"{home_code}/{away_code}",
             )
         return PlaceholderLabels(
-            long=f"Perdant {home.name}-{away.name}",
-            short=f"Perdant {home.fifa_code}/{away.fifa_code}",
+            long=f"Perdant {home_name}-{away_name}",
+            short=f"Perdant {home_code}/{away_code}",
         )
 
     if kind == "W":

@@ -8,6 +8,7 @@ Usage : python -m app.services.seed
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
@@ -19,6 +20,9 @@ from app.models.team import Team
 from app.services.football_api import FootballApiClient, Match as ApiMatch, Team as ApiTeam
 
 logger = logging.getLogger(__name__)
+
+# Référence brute d'un placeholder : W101 = vainqueur du match 101, L101 = son perdant.
+_PLACEHOLDER_PATTERN = re.compile(r"^([WL])(\d+)$")
 
 # Round of 32, Round of 16, Quarter-final, Semi-final, Final = phases finales.
 # "Matchday N" (phase de poules) est traité séparément, cf. _resolve_phase.
@@ -90,6 +94,7 @@ class SeedResult:
     teams_created: int
     matches_created: int
     matches_updated: int
+    placeholders_resolved: int = 0
 
 
 def _resolve_phase(round_label: str) -> MatchPhase:
@@ -176,6 +181,16 @@ def _upsert_matches(db: Session, api_matches: list[ApiMatch], team_ids: dict[str
             "winner_team_id": _resolve_team_id(team_ids, api_match.winner_team),
         }
 
+        # Ne pas régresser une équipe déjà résolue (par _resolve_placeholders sur une synchro
+        # précédente) quand la source ne fournit encore qu'un placeholder pour ce côté.
+        if match is not None:
+            if home_id is None and match.home_team_id is not None:
+                values["home_team_id"] = match.home_team_id
+                values["home_placeholder"] = None
+            if away_id is None and match.away_team_id is not None:
+                values["away_team_id"] = match.away_team_id
+                values["away_placeholder"] = None
+
         if match is None:
             match = Match(kickoff_at=api_match.kickoff_at, **values)
             db.add(match)
@@ -192,16 +207,77 @@ def _upsert_matches(db: Session, api_matches: list[ApiMatch], team_ids: dict[str
     return created, updated
 
 
+def _placeholder_team_id(placeholder: str, by_num: dict[int, Match]) -> int | None:
+    """Équipe déduite d'un placeholder (W101 / L101) une fois le match référencé décidé :
+    W = son vainqueur, L = son perdant. None tant que le match référencé n'a pas de
+    vainqueur connu (ou équipes inconnues)."""
+    parsed = _PLACEHOLDER_PATTERN.match(placeholder)
+    if parsed is None:
+        return None
+    kind, num = parsed.group(1), int(parsed.group(2))
+    ref = by_num.get(num)
+    if ref is None or ref.winner_team_id is None or ref.home_team_id is None or ref.away_team_id is None:
+        return None
+    if ref.winner_team_id not in (ref.home_team_id, ref.away_team_id):
+        return None  # incohérence de source : on ne devine pas
+    if kind == "W":
+        return ref.winner_team_id
+    return ref.away_team_id if ref.winner_team_id == ref.home_team_id else ref.home_team_id
+
+
+def _resolve_placeholders(db: Session) -> int:
+    """Résout les équipes d'un match aval (finale, petite finale…) à partir du résultat
+    des matchs qu'il référence, quand la source ne l'a pas déjà fait (elle peut ne fournir
+    que le score). W101 → vainqueur du match 101, L101 → son perdant.
+
+    En CASCADE et jusqu'à stabilité : dès qu'un match référencé a un vainqueur, ses matchs
+    aval se résolvent dans la même passe. Ne touche QUE matches.home_team_id/away_team_id
+    et efface le placeholder : les pronostics (predicted_winner_side) sont intacts, c'est
+    tout l'intérêt du pronostic par côté."""
+    matches = db.query(Match).all()
+    by_num = {m.num: m for m in matches if m.num is not None}
+    resolved = 0
+
+    changed = True
+    while changed:
+        changed = False
+        for match in matches:
+            if match.home_placeholder is not None and match.home_team_id is None:
+                team_id = _placeholder_team_id(match.home_placeholder, by_num)
+                if team_id is not None:
+                    match.home_team_id = team_id
+                    match.home_placeholder = None
+                    resolved += 1
+                    changed = True
+            if match.away_placeholder is not None and match.away_team_id is None:
+                team_id = _placeholder_team_id(match.away_placeholder, by_num)
+                if team_id is not None:
+                    match.away_team_id = team_id
+                    match.away_placeholder = None
+                    resolved += 1
+                    changed = True
+
+    return resolved
+
+
 def run_seed(db: Session, client: FootballApiClient | None = None) -> SeedResult:
-    """Importe équipes et matchs. Rejouable sans créer de doublons."""
+    """Importe équipes et matchs, puis résout les placeholders des matchs aval. Rejouable
+    sans créer de doublons."""
     client = client or FootballApiClient()
     tournament = client.fetch_tournament()
 
     team_ids, teams_created = _upsert_teams(db, tournament.teams)
     matches_created, matches_updated = _upsert_matches(db, tournament.matches, team_ids)
+    db.flush()  # rend les scores/vainqueurs fraîchement écrits visibles à la résolution
+    placeholders_resolved = _resolve_placeholders(db)
 
     db.commit()
-    return SeedResult(teams_created=teams_created, matches_created=matches_created, matches_updated=matches_updated)
+    return SeedResult(
+        teams_created=teams_created,
+        matches_created=matches_created,
+        matches_updated=matches_updated,
+        placeholders_resolved=placeholders_resolved,
+    )
 
 
 def main() -> None:
@@ -210,10 +286,12 @@ def main() -> None:
     try:
         result = run_seed(db)
         logger.info(
-            "Alimentation terminée : %d équipe(s) créée(s), %d match(s) créé(s), %d match(s) mis à jour.",
+            "Alimentation terminée : %d équipe(s) créée(s), %d match(s) créé(s), %d match(s) mis à jour, "
+            "%d placeholder(s) résolu(s).",
             result.teams_created,
             result.matches_created,
             result.matches_updated,
+            result.placeholders_resolved,
         )
     finally:
         db.close()

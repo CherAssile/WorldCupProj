@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MatchPredictionCard, type MatchTeamInfo, type QualifierOption } from "./ui";
 import { useSavePrediction } from "../hooks/useSavePrediction";
 import { deriveMatchStatus } from "../lib/matchStatus";
+import { frenchTeamName } from "../lib/teamNamesFr";
 import type { MatchRead, PredictionRead } from "../types/api";
 
 const KICKOFF_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
@@ -13,7 +14,7 @@ const KICKOFF_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 
 function toTeamInfo(team: MatchRead["home_team"]): MatchTeamInfo | null {
   if (!team) return null;
-  return { name: team.name, fifaCode: team.fifa_code, flagUrl: team.flag_url };
+  return { name: frenchTeamName(team.name), fifaCode: team.fifa_code, flagUrl: team.flag_url };
 }
 
 /**
@@ -112,14 +113,14 @@ export function PredictionMatchCard({ match, existingPrediction }: PredictionMat
         : [
             {
               id: "home",
-              label: match.home_team?.name ?? match.home_placeholder_label ?? "Équipe à domicile",
+              label: (match.home_team ? frenchTeamName(match.home_team.name) : null) ?? match.home_placeholder_label ?? "Équipe à domicile",
               labelShort: match.home_placeholder_label_short ?? undefined,
               fifaCode: match.home_team?.fifa_code,
               flagUrl: match.home_team?.flag_url,
             },
             {
               id: "away",
-              label: match.away_team?.name ?? match.away_placeholder_label ?? "Équipe à l'extérieur",
+              label: (match.away_team ? frenchTeamName(match.away_team.name) : null) ?? match.away_placeholder_label ?? "Équipe à l'extérieur",
               labelShort: match.away_placeholder_label_short ?? undefined,
               fifaCode: match.away_team?.fifa_code,
               flagUrl: match.away_team?.flag_url,

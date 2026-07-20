@@ -7,6 +7,7 @@ import { useMatches } from "../hooks/useMatches";
 import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { sortBracketMatches } from "../lib/bracket";
 import { getInitials } from "../lib/initials";
+import { frenchTeamName } from "../lib/teamNamesFr";
 import type { MatchPhase, MatchPhaseGroup, MatchRead } from "../types/api";
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
@@ -28,7 +29,7 @@ const KICKOFF_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 
 function toBracketTeam(team: MatchRead["home_team"]): BracketMatchTeam | null {
   if (!team) return null;
-  return { id: team.id, name: team.name, fifaCode: team.fifa_code, flagUrl: team.flag_url };
+  return { id: team.id, name: frenchTeamName(team.name), fifaCode: team.fifa_code, flagUrl: team.flag_url };
 }
 
 function metaLabel(match: MatchRead): string {

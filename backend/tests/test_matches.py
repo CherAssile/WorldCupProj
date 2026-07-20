@@ -86,6 +86,51 @@ def test_placeholder_label_resolved_one_level_when_referenced_teams_known(
     assert created["home_placeholder_label_short"] == "ZFR/ZES"
 
 
+def test_placeholder_label_translates_team_names_to_french(client: TestClient, db_session: Session) -> None:
+    """Bug de cohérence de langue : « Spain »/« England » (noms source, anglais) doivent
+    apparaître traduits dans le libellé composé (« ... ou Espagne », pas « ... ou Spain »).
+    Team.name lui-même reste inchangé (contrat avec ai-service).
+
+    Réutilise les équipes réelles (name/fifa_code uniques, déjà présentes sur cette base
+    via le vrai calendrier) plutôt que d'en recréer -- create_or_get pour rester robuste
+    si elles n'existaient pas encore."""
+    spain = db_session.query(Team).filter(Team.name == "Spain").one_or_none()
+    if spain is None:
+        spain = Team(name="Spain", fifa_code="ESP")
+        db_session.add(spain)
+    england = db_session.query(Team).filter(Team.name == "England").one_or_none()
+    if england is None:
+        england = Team(name="England", fifa_code="ENG")
+        db_session.add(england)
+    db_session.flush()
+
+    semi = Match(
+        num=90121,
+        home_team_id=spain.id,
+        away_team_id=england.id,
+        phase=MatchPhase.SEMI_FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 14, 19, 0, tzinfo=timezone.utc),
+    )
+    final = Match(
+        num=90221,
+        home_placeholder="W90121",
+        phase=MatchPhase.FINAL,
+        status=MatchStatus.SCHEDULED,
+        kickoff_at=datetime(2026, 7, 19, 19, 0, tzinfo=timezone.utc),
+    )
+    db_session.add_all([semi, final])
+    db_session.commit()
+
+    created = _match_from_response(client.get("/matches").json(), "final", final.id)
+    assert created["home_placeholder_label"] == "Espagne ou Angleterre"
+    assert created["home_placeholder_label_short"] == "ESP/ENG"  # codes FIFA inchangés
+
+    # Le nom source (anglais), lui, reste intact -- c'est lui qui part vers ai-service.
+    assert spain.name == "Spain"
+    assert england.name == "England"
+
+
 def test_loser_placeholder_resolved_one_level(client: TestClient, db_session: Session) -> None:
     """Un placeholder de type L résolu : « Perdant France-Espagne » / « Perdant FRA/ESP »."""
     france = Team(name="Zztest Loser France", fifa_code="ZLF")

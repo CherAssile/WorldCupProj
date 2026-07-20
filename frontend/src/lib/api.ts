@@ -2,6 +2,11 @@ import { getToken } from "./auth";
 
 const BASE_URL = import.meta.env.VITE_API_URL as string | undefined;
 
+/** Émis quand une requête authentifiée reçoit un 401 (jeton expiré/invalide) : AuthContext
+ * écoute cet événement pour déconnecter et rediriger, plutôt que de laisser chaque écran
+ * afficher une bannière d'erreur pour ce qui est en réalité une session expirée. */
+export const UNAUTHORIZED_EVENT = "auth:unauthorized";
+
 export class ApiError extends Error {
   status: number;
 
@@ -71,6 +76,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   if (!response.ok) {
+    // Uniquement pour une requête qui portait un jeton : un 401 sur /auth/login (mauvais
+    // mot de passe, pas de jeton envoyé) reste une erreur de formulaire normale, pas une
+    // session expirée.
+    if (response.status === 401 && token) {
+      window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+    }
     throw new ApiError(response.status, await extractErrorMessage(response));
   }
 

@@ -16,6 +16,7 @@ import { useMatches } from "../hooks/useMatches";
 import { useMyLeaderboardEntry } from "../hooks/useMyLeaderboardEntry";
 import { getInitials } from "../lib/initials";
 import { findNextMatch } from "../lib/nextMatch";
+import { frenchTeamName } from "../lib/teamNamesFr";
 import type { MatchPhase } from "../types/api";
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
@@ -57,8 +58,8 @@ export function Accueil() {
   const aiPick =
     aiPredictionQuery.isSuccess && nextMatch?.home_team && nextMatch?.away_team ? (
       <AiPickCard
-        homeTeamName={nextMatch.home_team.name}
-        awayTeamName={nextMatch.away_team.name}
+        homeTeamName={frenchTeamName(nextMatch.home_team.name)}
+        awayTeamName={frenchTeamName(nextMatch.away_team.name)}
         homeScore={aiPredictionQuery.data.predicted_home_score}
         awayScore={aiPredictionQuery.data.predicted_away_score}
         isFallback={aiPredictionQuery.data.is_fallback}
@@ -107,12 +108,12 @@ export function Accueil() {
               groupLabel={`Prochain match · ${PHASE_LABELS[nextMatch.phase]}`}
               kickoffLabel={KICKOFF_FORMATTER.format(new Date(nextMatch.kickoff_at))}
               homeTeam={{
-                name: nextMatch.home_team?.name ?? nextMatch.home_placeholder_label ?? "À déterminer",
+                name: (nextMatch.home_team ? frenchTeamName(nextMatch.home_team.name) : null) ?? nextMatch.home_placeholder_label ?? "À déterminer",
                 fifaCode: nextMatch.home_team?.fifa_code ?? "?",
                 flagUrl: nextMatch.home_team?.flag_url ?? null,
               }}
               awayTeam={{
-                name: nextMatch.away_team?.name ?? nextMatch.away_placeholder_label ?? "À déterminer",
+                name: (nextMatch.away_team ? frenchTeamName(nextMatch.away_team.name) : null) ?? nextMatch.away_placeholder_label ?? "À déterminer",
                 fifaCode: nextMatch.away_team?.fifa_code ?? "?",
                 flagUrl: nextMatch.away_team?.flag_url ?? null,
               }}

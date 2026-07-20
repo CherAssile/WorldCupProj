@@ -2,6 +2,7 @@ import { PredictionMatchCard } from "./PredictionMatchCard";
 import { AiPickCard } from "./ui";
 import { useAiPrediction } from "../hooks/useAiPrediction";
 import { feedingMatches } from "../lib/feedingMatches";
+import { frenchTeamName } from "../lib/teamNamesFr";
 import type { MatchPhase, MatchRead, PredictionRead } from "../types/api";
 
 const PHASE_LABELS: Record<MatchPhase, string> = {
@@ -22,8 +23,8 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 });
 
 function teamsLine(match: MatchRead): string {
-  const home = match.home_team?.name ?? match.home_placeholder_label ?? "À déterminer";
-  const away = match.away_team?.name ?? match.away_placeholder_label ?? "À déterminer";
+  const home = (match.home_team ? frenchTeamName(match.home_team.name) : null) ?? match.home_placeholder_label ?? "À déterminer";
+  const away = (match.away_team ? frenchTeamName(match.away_team.name) : null) ?? match.away_placeholder_label ?? "À déterminer";
   return `${home} – ${away}`;
 }
 
@@ -88,8 +89,8 @@ export function SingleMatchPrediction({ match, existingPrediction, matchesByNum 
 
           {aiPrediction.isSuccess ? (
             <AiPickCard
-              homeTeamName={match.home_team?.name ?? match.home_placeholder_label_short ?? "Domicile"}
-              awayTeamName={match.away_team?.name ?? match.away_placeholder_label_short ?? "Extérieur"}
+              homeTeamName={(match.home_team ? frenchTeamName(match.home_team.name) : null) ?? match.home_placeholder_label_short ?? "Domicile"}
+              awayTeamName={(match.away_team ? frenchTeamName(match.away_team.name) : null) ?? match.away_placeholder_label_short ?? "Extérieur"}
               homeScore={aiPrediction.data.predicted_home_score}
               awayScore={aiPrediction.data.predicted_away_score}
               isFallback={aiPrediction.data.is_fallback}
